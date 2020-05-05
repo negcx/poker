@@ -345,4 +345,50 @@ defmodule Poker.Hand do
       when left_type == right_type do
     Poker.Rank.compare(left_rank, right_rank)
   end
+
+  def gt(left, right) do
+    case compare(left, right) do
+      :gt -> true
+      _ -> false
+    end
+  end
+
+  def lt(left, right) do
+    case compare(left, right) do
+      :lt -> true
+      _ -> false
+    end
+  end
+
+  def gte(left, right) do
+    case compare(left, right) do
+      :gt -> true
+      :eq -> true
+      _ -> false
+    end
+  end
+
+  def eq(left, right) do
+    case compare(left, right) do
+      :eq -> true
+      _ -> false
+    end
+  end
+
+  def lte(left, right) do
+    case compare(left, right) do
+      :lt -> true
+      :eq -> true
+      _ -> false
+    end
+  end
+
+  def winner(hands) when is_list(hands) do
+    sorted_hands =
+      hands
+      |> Enum.sort_by(& &1, &Poker.Hand.gte/2)
+
+    sorted_hands
+    |> Enum.filter(&Poker.Hand.eq(sorted_hands |> hd, &1))
+  end
 end

@@ -33,24 +33,24 @@ defmodule Poker.Rank do
     end
   end
 
-  @spec from_unicode(String.t()) :: Poker.Rank.t()
-  def from_unicode(u) do
-    case u do
-      "2" -> :two
-      "3" -> :three
-      "4" -> :four
-      "5" -> :five
-      "6" -> :six
-      "7" -> :seven
-      "8" -> :eight
-      "9" -> :nine
-      "10" -> :ten
-      "J" -> :jack
-      "Q" -> :queen
-      "K" -> :king
-      "A" -> :ace
-    end
-  end
+  # @spec from_unicode(String.t()) :: Poker.Rank.t()
+  # def from_unicode(u) do
+  #   case u do
+  #     "2" -> :two
+  #     "3" -> :three
+  #     "4" -> :four
+  #     "5" -> :five
+  #     "6" -> :six
+  #     "7" -> :seven
+  #     "8" -> :eight
+  #     "9" -> :nine
+  #     "10" -> :ten
+  #     "J" -> :jack
+  #     "Q" -> :queen
+  #     "K" -> :king
+  #     "A" -> :ace
+  #   end
+  # end
 
   @spec to_integer(Poker.Rank.t()) :: integer()
   def to_integer(rank) do
@@ -71,48 +71,43 @@ defmodule Poker.Rank do
     end
   end
 
-  @spec from_integer(integer()) :: Poker.Rank.t()
-  def from_integer(i) do
-    case i do
-      1 -> :ace
-      2 -> :two
-      3 -> :three
-      4 -> :four
-      5 -> :five
-      6 -> :six
-      7 -> :seven
-      8 -> :eight
-      9 -> :nine
-      10 -> :ten
-      11 -> :jack
-      12 -> :queen
-      13 -> :king
-      14 -> :ace
-    end
-  end
+  # @spec from_integer(integer()) :: Poker.Rank.t()
+  # def from_integer(i) do
+  #   case i do
+  #     1 -> :ace
+  #     2 -> :two
+  #     3 -> :three
+  #     4 -> :four
+  #     5 -> :five
+  #     6 -> :six
+  #     7 -> :seven
+  #     8 -> :eight
+  #     9 -> :nine
+  #     10 -> :ten
+  #     11 -> :jack
+  #     12 -> :queen
+  #     13 -> :king
+  #     14 -> :ace
+  #   end
+  # end
 
-  @spec gt(Poker.Rank.t(), Poker.Rank.t()) :: boolean()
-  def gt(left, right) do
-    Poker.Rank.to_integer(left) > Poker.Rank.to_integer(right)
-  end
+  # @spec gt(Poker.Rank.t(), Poker.Rank.t()) :: boolean()
+  # def gt(left, right) do
+  #   Poker.Rank.to_integer(left) > Poker.Rank.to_integer(right)
+  # end
 
-  @spec lt(Poker.Rank.t(), Poker.Rank.t()) :: boolean()
-  def lt(left, right) do
-    Poker.Rank.to_integer(left) < Poker.Rank.to_integer(right)
-  end
+  # @spec lt(Poker.Rank.t(), Poker.Rank.t()) :: boolean()
+  # def lt(left, right) do
+  #   Poker.Rank.to_integer(left) < Poker.Rank.to_integer(right)
+  # end
 
-  @spec eq(Poker.Rank.t(), Poker.Rank.t()) :: boolean()
-  def eq(left, right) do
-    Poker.Rank.to_integer(left) == Poker.Rank.to_integer(right)
-  end
+  # @spec eq(Poker.Rank.t(), Poker.Rank.t()) :: boolean()
+  # def eq(left, right) do
+  #   Poker.Rank.to_integer(left) == Poker.Rank.to_integer(right)
+  # end
 
   @spec ranks :: [Poker.Rank.t()]
   def ranks() do
-    [:two, :three, :four, :five, :six, :seven, :eight, :nine, :ten, :jack, :queen, :king, :ace]
-  end
-
-  @spec straight_ranks :: [Poker.Rank.t()]
-  def straight_ranks() do
     [
       :ace,
       :king,
@@ -126,9 +121,13 @@ defmodule Poker.Rank do
       :five,
       :four,
       :three,
-      :two,
-      :ace
+      :two
     ]
+  end
+
+  @spec straight_ranks :: [Poker.Rank.t()]
+  def straight_ranks() do
+    ranks() ++ [:ace]
   end
 
   @spec compare([Poker.Rank.t()], [Poker.Rank.t()]) :: :gt | :eq | :lt

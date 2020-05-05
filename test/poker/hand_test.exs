@@ -3,6 +3,17 @@ defmodule Poker.HandTest do
 
   alias Poker.{Card, Hand}
 
+  describe "Winners -" do
+    test "Winners" do
+      hand1 = %Hand{type: :three_kind, rank: :queen, kicker: [:ace, :king], cards: []}
+      hand2 = %Hand{type: :four_kind, rank: :queen, kicker: :ace, cards: []}
+      hand3 = %Hand{type: :four_kind, rank: :queen, kicker: :king, cards: []}
+
+      assert Hand.winner([hand1, hand2, hand3]) == [hand2]
+      assert Hand.winner([hand1, hand2, hand3, hand2]) == [hand2, hand2]
+    end
+  end
+
   describe "Like Hand Category Comparisons - " do
     test "Four of a Kind" do
       assert Hand.compare(
@@ -40,12 +51,12 @@ defmodule Poker.HandTest do
   end
 
   describe "Unlike Hand Category Comparisons - " do
-    # test "Four of a Kind vs Three of a Kind" do
-    #   assert Hand.compare(
-    #            %Hand{type: :four_kind, rank: :two, kicker: :ace, cards: []},
-    #            %Hand{type: :three_kind, rank: :ace, kicker: [:nine, :seven], cards: []}
-    #          ) == :gt
-    # end
+    test "Four of a Kind vs Three of a Kind" do
+      assert Hand.compare(
+               %Hand{type: :four_kind, rank: :two, kicker: :ace, cards: []},
+               %Hand{type: :three_kind, rank: :ace, kicker: [:nine, :seven], cards: []}
+             ) == :gt
+    end
   end
 
   describe "Hand Values -" do

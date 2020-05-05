@@ -1,14 +1,35 @@
 defmodule Poker.Hand do
-  @spec value([Poker.Card.t()]) ::
-          Poker.HandCategory.Flush.t()
-          | Poker.HandCategory.FourKind.t()
-          | Poker.HandCategory.FullHouse.t()
-          | Poker.HandCategory.HighCard.t()
-          | Poker.HandCategory.OnePair.t()
-          | Poker.HandCategory.Straight.t()
-          | Poker.HandCategory.StraightFlush.t()
-          | Poker.HandCategory.ThreeKind.t()
-          | Poker.HandCategory.TwoPair.t()
+  @enforce_keys [:type, :rank, :cards]
+  defstruct type: nil, rank: nil, kicker: nil, cards: nil
+
+  @type t() :: %__MODULE__{
+          type:
+            :straight_flush
+            | :four_kind
+            | :full_house
+            | :flush
+            | :straight
+            | :three_kind
+            | :two_pair
+            | :one_pair
+            | :high_card,
+          rank: Poker.Rank.t() | [Poker.Rank.t()],
+          kicker: nil | Poker.Rank.t() | [Poker.Rank.t()],
+          cards: [Poker.Card.t()]
+        }
+
+  @types [
+    :high_card,
+    :one_pair,
+    :two_pair,
+    :three_kind,
+    :straight,
+    :flush,
+    :full_house,
+    :four_kind,
+    :straight_flush
+  ]
+
   def value(cards)
       when length(cards) >= 5 and
              is_list(cards) do
@@ -39,7 +60,8 @@ defmodule Poker.Hand do
           {:done, hand} ->
             {
               :done,
-              %Poker.HandCategory.StraightFlush{
+              %Poker.Hand{
+                type: :straight_flush,
                 rank: hand.rank,
                 cards: hand.cards
               }
@@ -68,7 +90,8 @@ defmodule Poker.Hand do
           |> hd
 
         {:done,
-         %Poker.HandCategory.FourKind{
+         %Poker.Hand{
+           type: :four_kind,
            rank: rank,
            kicker: kicker.rank,
            cards: four_cards ++ [kicker]
@@ -92,7 +115,8 @@ defmodule Poker.Hand do
 
       [{rank, three_cards} | [{pair_rank, pair_cards}]] when length(three_cards) == 3 ->
         {:done,
-         %Poker.HandCategory.FullHouse{
+         %Poker.Hand{
+           type: :full_house,
            rank: [rank, pair_rank],
            cards: three_cards ++ (pair_cards |> Enum.take(2))
          }}
@@ -120,7 +144,8 @@ defmodule Poker.Hand do
           |> Enum.map(& &1.rank)
 
         {:done,
-         %Poker.HandCategory.Flush{
+         %Poker.Hand{
+           type: :flush,
            rank: ranks,
            cards: cards
          }}
@@ -160,7 +185,8 @@ defmodule Poker.Hand do
         end)
 
       {:done,
-       %Poker.HandCategory.Straight{
+       %Poker.Hand{
+         type: :straight,
          rank: rank,
          cards: straight_cards
        }}
@@ -186,7 +212,8 @@ defmodule Poker.Hand do
           |> Enum.take(2)
 
         {:done,
-         %Poker.HandCategory.ThreeKind{
+         %Poker.Hand{
+           type: :three_kind,
            rank: rank,
            kicker: Enum.map(kicker, & &1.rank),
            cards: three_cards ++ kicker
@@ -216,7 +243,8 @@ defmodule Poker.Hand do
           |> hd
 
         {:done,
-         %Poker.HandCategory.TwoPair{
+         %Poker.Hand{
+           type: :two_pair,
            rank: rank,
            kicker: kicker.rank,
            cards: pair_cards ++ [kicker]
@@ -244,33 +272,13 @@ defmodule Poker.Hand do
           |> Enum.take(3)
 
         {:done,
-         %Poker.HandCategory.OnePair{
+         %Poker.Hand{
+           type: :one_pair,
            rank: rank,
            kicker: Enum.map(kicker, & &1.rank),
            cards: pair_cards ++ kicker
          }}
     end
-  end
-
-  def compare(%{__struct__: left_type, rank: left_rank, kicker: left_kicker}, %{
-        __struct__: right_type,
-        rank: right_rank,
-        kicker: right_kicker
-      })
-      when left_type == right_type do
-    case Poker.Rank.compare(left_rank, right_rank) do
-      :lt -> :lt
-      :gt -> :gt
-      :eq -> Poker.Rank.compare(left_kicker, right_kicker)
-    end
-  end
-
-  def compare(%{__struct__: left_type, rank: left_rank}, %{
-        __struct__: right_type,
-        rank: right_rank
-      })
-      when left_type == right_type do
-    Poker.Rank.compare(left_rank, right_rank)
   end
 
   defp high_card?({:done, hand}), do: {:done, hand}
@@ -282,9 +290,59 @@ defmodule Poker.Hand do
       |> Enum.take(5)
 
     {:done,
-     %Poker.HandCategory.HighCard{
+     %Poker.Hand{
+       type: :high_card,
        rank: cards |> Enum.map(& &1.rank),
        cards: cards
      }}
+  end
+
+  defp type_to_integer(type) do
+    case type do
+      :high_card -> 0
+      :one_pair -> 1
+      :two_pair -> 2
+      :three_kind -> 3
+      :straight -> 4
+      :flush -> 5
+      :full_house -> 6
+      :four_kind -> 7
+      :straight_flush -> 8
+    end
+  end
+
+  def compare(left_type, right_type)
+      when left_type in @types and right_type in @types do
+    case type_to_integer(left_type) - type_to_integer(right_type) do
+      dif when dif > 0 -> :gt
+      dif when dif == 0 -> :eq
+      _ -> :lt
+    end
+  end
+
+  def compare(%{type: left_type}, %{type: right_type})
+      when left_type != right_type do
+    compare(left_type, right_type)
+  end
+
+  def compare(%{type: left_type, rank: left_rank, kicker: left_kicker}, %{
+        type: right_type,
+        rank: right_rank,
+        kicker: right_kicker
+      })
+      when left_type == right_type do
+    case Poker.Rank.compare(left_rank, right_rank) do
+      :lt -> :lt
+      :gt -> :gt
+      :eq -> Poker.Rank.compare(left_kicker, right_kicker)
+    end
+  end
+
+  def compare(%{type: left_type, rank: left_rank}, %{
+        type: right_type,
+        rank: right_rank
+      })
+      when left_type == right_type do
+    Poker.Rank.compare(left_rank, right_rank)
   end
 end

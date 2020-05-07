@@ -147,7 +147,6 @@ defmodule Poker.Rank do
     end
   end
 
-  @spec compare(Poker.Rank.t(), Poker.Rank.t()) :: :gt | :eq | :lt
   def compare(left, right) do
     case Poker.Rank.to_integer(left) - Poker.Rank.to_integer(right) do
       dif when dif > 0 ->

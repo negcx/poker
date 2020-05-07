@@ -346,6 +346,7 @@ defmodule Poker.Hand do
     Poker.Rank.compare(left_rank, right_rank)
   end
 
+  @spec gt(Poker.Hand.t(), Poker.Hand.t()) :: boolean()
   def gt(left, right) do
     case compare(left, right) do
       :gt -> true
@@ -353,6 +354,7 @@ defmodule Poker.Hand do
     end
   end
 
+  @spec lt(Poker.Hand.t(), Poker.Hand.t()) :: boolean()
   def lt(left, right) do
     case compare(left, right) do
       :lt -> true
@@ -360,6 +362,7 @@ defmodule Poker.Hand do
     end
   end
 
+  @spec gte(Poker.Hand.t(), Poker.Hand.t()) :: boolean()
   def gte(left, right) do
     case compare(left, right) do
       :gt -> true
@@ -368,6 +371,7 @@ defmodule Poker.Hand do
     end
   end
 
+  @spec eq(Poker.Hand.t(), Poker.Hand.t()) :: boolean()
   def eq(left, right) do
     case compare(left, right) do
       :eq -> true
@@ -375,6 +379,7 @@ defmodule Poker.Hand do
     end
   end
 
+  @spec lte(Poker.Hand.t(), Poker.Hand.t()) :: boolean()
   def lte(left, right) do
     case compare(left, right) do
       :lt -> true
@@ -383,6 +388,7 @@ defmodule Poker.Hand do
     end
   end
 
+  @spec winner([Poker.Hand.t()]) :: [Poker.Hand.t()]
   def winner(hands) when is_list(hands) do
     sorted_hands =
       hands

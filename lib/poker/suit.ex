@@ -23,6 +23,6 @@ defmodule Poker.Suit do
 
   @spec suits :: [Poker.Suit.t()]
   def suits() do
-    [:clubs, :diamonds, :hearts, :spades]
+    [:spades, :hearts, :diamonds, :clubs]
   end
 end

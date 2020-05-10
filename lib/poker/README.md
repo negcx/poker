@@ -42,6 +42,29 @@
 ## Game Loop
 1. Place dealer button
 2. Deal cards to players with chips
+
+SELECT ROUND PLAYERS
+- All seats where stack > 0 and player is not nil
+
+MOVE BUTTON
+- if button is nil, place it randomly
+- otherwise move it 1 player to left
+
+deal cards to round players
+
+ACTION: AUTOBET SMALL BLIND
+ACTION: AUTOBET BIG BLIND
+TURN: PLAYER LEFT OF BIG BLIND
+
+action types:
+- :small_blind
+- :big_blind
+- :fold
+- :call
+- :check
+- :raise
+- :bet
+
 3. Preflop betting loop
     1. Player to the left of big blind has the option to fold, call, raise
     2. Repeat until all players have called or folded

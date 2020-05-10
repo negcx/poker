@@ -10,9 +10,14 @@ defmodule Poker.Deck do
     end)
   end
 
-  @spec deal([Poker.Card.t()]) :: {Poker.Card.t(), [Poker.Card.t()]}
+  @spec deal([Poker.Card.t()]) :: {[Poker.Card.t()], Poker.Card.t()}
   def deal(deck) when length(deck) > 0 do
     [card | deck] = deck
-    {card, deck}
+    {deck, card}
+  end
+
+  def deal(deck, num) when length(deck) - num >= 0 do
+    cards = Enum.take(deck, num)
+    {deck -- cards, cards}
   end
 end

@@ -30,6 +30,7 @@ defmodule Poker.Hand do
     :straight_flush
   ]
 
+  @spec value([Poker.Card.t()]) :: Poker.Hand.t()
   def value(cards)
       when length(cards) >= 5 and
              is_list(cards) do

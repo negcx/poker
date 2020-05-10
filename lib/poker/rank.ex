@@ -68,6 +68,7 @@ defmodule Poker.Rank do
       :queen -> 12
       :king -> 13
       :ace -> 14
+      nil -> 0
     end
   end
 

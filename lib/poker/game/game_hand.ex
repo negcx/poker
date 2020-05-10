@@ -16,7 +16,7 @@ defmodule Poker.Game.GameHand do
     field :burn, [Poker.Card.t()], default: []
     field :actions, [Poker.Game.Action.t()], default: []
     field :config, Poker.Game.Config.t()
-    field :winners, [%{String.t() => %{amount: float(), hand: Poker.Hand.t()}}], default: []
+    field :winners, [%{String.t() => %{amount: float(), hand: Poker.Hand.t() | nil}}], default: []
   end
 
   @spec new(Poker.Game.Config.t(), [Poker.Deck.t()], [Poker.Game.Player.t()], %{
@@ -56,6 +56,7 @@ defmodule Poker.Game.GameHand do
 
     %{hand | actions: hand.actions ++ [action]}
     |> update_stack(action.player, -action.amount)
+    |> early_transition_to_end()
     |> transition()
   end
 
@@ -90,6 +91,16 @@ defmodule Poker.Game.GameHand do
       amount: amount,
       round: hand.round,
       action: :call
+    })
+  end
+
+  def all_in(hand, player) do
+    hand
+    |> action(%Action{
+      player: player,
+      amount: Map.get(hand.stacks, player),
+      round: hand.round,
+      action: :all_in
     })
   end
 
@@ -214,6 +225,15 @@ defmodule Poker.Game.GameHand do
     players_in_action(hand, hand.round)
   end
 
+  def players_in_hand(hand) do
+    players_who_folded =
+      hand.actions
+      |> Enum.filter(&(&1.action == :fold))
+      |> Enum.map(& &1.player)
+
+    hand.players -- players_who_folded
+  end
+
   def players_who_acted(hand, round) do
     hand.actions
     |> Enum.filter(&(&1.round == round))
@@ -239,13 +259,14 @@ defmodule Poker.Game.GameHand do
     # 2. All players in a non-terminating state have the same
     # bet amount.
 
-    case players_in_action(hand, prev_round(hand.round)) -- players_who_acted(hand, hand.round) do
+    case players_in_action(hand, prev_round(hand.round)) --
+           players_who_acted(hand, hand.round) do
       [] ->
         number_of_bets =
           hand
           |> player_bets()
           |> Enum.filter(fn {_player, action} ->
-            action.action not in [:all_in, :fold]
+            action.action not in [:fold]
           end)
           |> Enum.group_by(fn {_player, action} -> action.bet end)
           |> Map.keys()
@@ -253,6 +274,7 @@ defmodule Poker.Game.GameHand do
 
         case number_of_bets do
           1 -> true
+          0 -> true
           _ -> false
         end
 
@@ -271,34 +293,48 @@ defmodule Poker.Game.GameHand do
 
     Logger.debug("Board #{board}")
 
-    Logger.debug("Players")
+    case hand.round do
+      :new ->
+        hand
 
-    _ =
-      hand
-      |> players_in_action
-      |> Enum.map(fn player ->
-        stack = Map.get(hand.stacks, player)
-        cards = Map.get(hand.cards, player, [])
-        cards = cards |> Enum.map(&to_string/1) |> Enum.join(" ")
-
-        Logger.debug("   #{player} #{stack} #{cards}")
-      end)
-
-    _ =
-      case hand.winners do
-        [] ->
-          nil
-
-        winners ->
-          winners
+      :end ->
+        _ =
+          hand.winners
           |> Enum.map(fn {player, map} ->
-            Logger.debug("   #{player} won #{map.amount} with #{map.hand.type}")
+            case map.hand do
+              nil ->
+                Logger.debug("   #{player} won #{map.amount}, all other players folded")
+
+              hand ->
+                cards =
+                  hand.cards
+                  |> Enum.map(&to_string/1)
+                  |> Enum.join(" ")
+
+                Logger.debug("   #{player} won #{map.amount} with #{hand.type}, #{cards}")
+            end
           end)
-      end
 
-    Logger.debug("")
+        hand
 
-    hand
+      _ ->
+        Logger.debug("Players")
+
+        _ =
+          hand
+          |> players_in_hand()
+          |> Enum.map(fn player ->
+            stack = Map.get(hand.stacks, player)
+            cards = Map.get(hand.cards, player, [])
+            cards = cards |> Enum.map(&to_string/1) |> Enum.join(" ")
+
+            Logger.debug("   #{player} #{stack} #{cards}")
+          end)
+
+        Logger.debug("")
+
+        hand
+    end
   end
 
   def debug_action(action) do
@@ -322,6 +358,7 @@ defmodule Poker.Game.GameHand do
 
         %{hand | round: :flop, board: flop, burn: [burn_card], deck: deck}
         |> debug_game_state()
+        |> transition()
 
       false ->
         hand
@@ -342,6 +379,7 @@ defmodule Poker.Game.GameHand do
             deck: deck
         }
         |> debug_game_state()
+        |> transition()
 
       false ->
         hand
@@ -362,6 +400,7 @@ defmodule Poker.Game.GameHand do
             deck: deck
         }
         |> debug_game_state()
+        |> transition()
 
       false ->
         hand
@@ -374,7 +413,7 @@ defmodule Poker.Game.GameHand do
         # Determine winner in a showdown
         players_with_hands =
           hand
-          |> players_in_action()
+          |> players_in_hand()
           |> Enum.reduce(Map.new(), fn player, map ->
             map
             |> Map.put(player, Poker.Hand.value(Map.get(hand.cards, player) ++ hand.board))
@@ -409,6 +448,25 @@ defmodule Poker.Game.GameHand do
         |> debug_game_state()
 
       false ->
+        hand
+    end
+  end
+
+  def transition(%{round: :end} = hand) do
+    hand
+  end
+
+  def early_transition_to_end(hand) do
+    case length(players_in_hand(hand)) do
+      1 ->
+        winner = hand |> players_in_action |> hd
+        winners = %{winner => %{amount: pot(hand), hand: nil}}
+
+        %{hand | round: :end, winners: winners}
+        |> update_stack(winner, pot(hand))
+        |> debug_game_state()
+
+      _ ->
         hand
     end
   end

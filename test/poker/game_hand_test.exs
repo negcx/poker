@@ -28,7 +28,7 @@ defmodule Poker.GameHandTest do
     assert length(hand.deck) == 46
   end
 
-  test "Raise and Call, Transition to Flop", state do
+  test "A few simple hands with winners", state do
     hand =
       GameHand.new(state[:config], state[:deck], state[:players], state[:stacks])
       |> GameHand.raise("Hugo", 4)
@@ -56,9 +56,16 @@ defmodule Poker.GameHandTest do
 
     assert hand.round == :turn
 
+    folded_hand = hand
+    folded_hand = folded_hand |> GameHand.fold("Hugo")
+
+    assert folded_hand.round == :end
+
     hand = hand |> GameHand.call("Hugo", 8)
 
     assert hand.round == :river
+
+    folded_hand = hand
 
     hand =
       hand
@@ -66,5 +73,22 @@ defmodule Poker.GameHandTest do
       |> GameHand.call("Hugo", 20)
 
     assert hand.round == :end
+
+    folded_hand =
+      folded_hand
+      |> GameHand.bet("Gely", 20)
+      |> GameHand.fold("Hugo")
+
+    assert folded_hand.round == :end
+  end
+
+  test "All in!", state do
+    hand =
+      GameHand.new(state[:config], state[:deck], state[:players], state[:stacks])
+      |> GameHand.all_in("Hugo")
+      |> GameHand.all_in("Kyle")
+      |> GameHand.fold("Gely")
+
+    assert Map.keys(hand.winners) |> hd == "Kyle"
   end
 end

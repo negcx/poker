@@ -1,7 +1,7 @@
 defmodule Poker.Game.GameServer do
   use GenServer
 
-  alias Poker.Game.{GameState, Player, Config}
+  alias Poker.Game.{GameState}
 
   @impl true
   def init(config) do

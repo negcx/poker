@@ -5,6 +5,25 @@ defmodule Poker.GameHandTest do
   alias Poker.{Card, Deck}
 
   setup_all do
+    stacked_deck =
+      Deck.stack(
+        [
+          [%Poker.Card{rank: :ace, suit: :spades}, %Poker.Card{rank: :ace, suit: :hearts}],
+          [%Poker.Card{rank: :ace, suit: :diamonds}, %Poker.Card{rank: :ace, suit: :clubs}],
+          [
+            %Poker.Card{rank: :two, suit: :diamonds},
+            %Poker.Card{rank: :seven, suit: :diamonds}
+          ]
+        ],
+        [
+          %Poker.Card{rank: :eight, suit: :clubs},
+          %Poker.Card{rank: :seven, suit: :clubs},
+          %Poker.Card{rank: :king, suit: :hearts},
+          %Poker.Card{rank: :queen, suit: :hearts},
+          %Poker.Card{rank: :jack, suit: :spades}
+        ]
+      )
+
     {:ok,
      players: [
        %Player{name: "Kyle", player_id: 1},
@@ -13,7 +32,8 @@ defmodule Poker.GameHandTest do
      ],
      deck: Deck.new(),
      config: %Config{},
-     stacks: %{"Kyle" => 100, "Gely" => 150, "Hugo" => 100}}
+     stacks: %{"Kyle" => 100, "Gely" => 150, "Hugo" => 100},
+     stacked_deck: stacked_deck}
   end
 
   test "Deal the cards!", state do
@@ -94,32 +114,28 @@ defmodule Poker.GameHandTest do
   end
 
   test "All in, split pot", state do
-    deck =
-      Deck.stack(
-        [
-          [%Poker.Card{rank: :ace, suit: :spades}, %Poker.Card{rank: :ace, suit: :hearts}],
-          [%Poker.Card{rank: :ace, suit: :diamonds}, %Poker.Card{rank: :ace, suit: :clubs}],
-          [
-            %Poker.Card{rank: :eight, suit: :diamonds},
-            %Poker.Card{rank: :seven, suit: :diamonds}
-          ]
-        ],
-        [
-          %Poker.Card{rank: :eight, suit: :clubs},
-          %Poker.Card{rank: :seven, suit: :clubs},
-          %Poker.Card{rank: :king, suit: :hearts},
-          %Poker.Card{rank: :queen, suit: :hearts},
-          %Poker.Card{rank: :jack, suit: :spades}
-        ]
-      )
-
     hand =
-      GameHand.new(state[:config], deck, state[:players], state[:stacks])
+      GameHand.new(state[:config], state[:stacked_deck], state[:players], state[:stacks])
       |> GameHand.fold("Hugo")
       |> GameHand.all_in("Kyle")
       |> GameHand.call("Gely", 98)
 
     assert hand.round == :end
     assert Map.keys(hand.winners) -- ["Kyle", "Gely"] == []
+  end
+
+  test "Everyone's all in", state do
+    hand =
+      GameHand.new(state[:config], state[:stacked_deck], state[:players], state[:stacks])
+      |> GameHand.all_in("Hugo")
+      |> GameHand.all_in("Kyle")
+      |> GameHand.call("Gely", 98)
+
+    assert hand.round == :end
+    assert Map.keys(hand.winners) -- ["Gely", "Kyle"] == []
+  end
+
+  test "Three all ins, side pots", state do
+    stacks = %{"Kyle" => 100, "Gely" => 150, "Hugo" => 200}
   end
 end

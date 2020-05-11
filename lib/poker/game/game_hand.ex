@@ -244,15 +244,6 @@ defmodule Poker.Game.GameHand do
     |> MapSet.to_list()
   end
 
-  defp prev_round(round) do
-    case round do
-      :preflop -> :new
-      :flop -> :preflop
-      :turn -> :flop
-      :river -> :turn
-    end
-  end
-
   defp should_transition?(hand) do
     # Transition Conditions
     # Players must have acted this round or previously been all in
@@ -284,7 +275,6 @@ defmodule Poker.Game.GameHand do
       |> Kernel.--(all_in_players)
       |> Kernel.--(folded_players)
       |> Kernel.--(acted_players)
-      |> IO.inspect()
 
     active_players =
       hand.players

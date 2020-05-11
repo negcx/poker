@@ -264,35 +264,51 @@ defmodule Poker.Game.GameHand do
       hand.actions
       |> Enum.filter(&(&1.action == :all_in))
       |> Enum.map(& &1.player)
+      |> Enum.uniq()
 
     folded_players =
       hand.actions
       |> Enum.filter(&(&1.action == :fold))
       |> Enum.map(& &1.player)
+      |> Enum.uniq()
 
-    case length(
-           IO.inspect(players_in_action(hand, prev_round(hand.round))) --
-             IO.inspect(players_who_acted(hand, hand.round))
-         ) do
-      x when x <= 1 ->
-        number_of_bets =
-          hand
-          |> player_bets()
-          |> Enum.filter(fn {_player, action} ->
-            action.action not in [:fold]
-          end)
-          |> Enum.group_by(fn {_player, action} -> action.bet end)
-          |> Map.keys()
-          |> length
+    acted_players =
+      hand.actions
+      |> Enum.filter(&(&1.action not in [:small_blind, :big_blind]))
+      |> Enum.filter(&(&1.round == hand.round))
+      |> Enum.map(& &1.player)
+      |> Enum.uniq()
 
-        case number_of_bets do
-          1 -> true
-          0 -> true
-          _ -> false
-        end
+    turns_remaining =
+      hand.players
+      |> Kernel.--(all_in_players)
+      |> Kernel.--(folded_players)
+      |> Kernel.--(acted_players)
+      |> IO.inspect()
 
-      _ ->
-        false
+    active_players =
+      hand.players
+      |> Kernel.--(all_in_players)
+      |> Kernel.--(folded_players)
+
+    if length(turns_remaining) == 0 or length(active_players) in [0, 1] do
+      number_of_bets =
+        hand
+        |> player_bets()
+        |> Enum.filter(fn {_player, action} ->
+          action.action != :fold
+        end)
+        |> Enum.group_by(fn {_player, action} -> action.bet end)
+        |> Map.keys()
+        |> length
+
+      case number_of_bets do
+        1 -> true
+        0 -> true
+        _ -> false
+      end
+    else
+      false
     end
   end
 

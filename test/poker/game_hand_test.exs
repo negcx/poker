@@ -35,6 +35,7 @@ defmodule Poker.GameHandTest do
       |> GameHand.fold("Kyle")
       |> GameHand.call("Gely", 2)
 
+    assert hand.round == :flop
     assert GameHand.current_bet(hand) == 0
 
     assert GameHand.players_in_action(hand) == ["Gely", "Hugo"]

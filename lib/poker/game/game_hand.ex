@@ -29,6 +29,7 @@ defmodule Poker.Game.GameHand do
       stacks: stacks,
       config: config
     }
+    |> debug_game_state()
     |> transition()
   end
 
@@ -253,15 +254,27 @@ defmodule Poker.Game.GameHand do
   end
 
   defp should_transition?(hand) do
-    # In order to transition from preflop to flop, the following
-    # conditions must be true:
-    # 1. All players have acted
-    # 2. All players in a non-terminating state have the same
-    # bet amount.
+    # Transition Conditions
+    # Players must have acted this round or previously been all in
+    # or folded.
+    # Players who aren't all in need to have a bet that matches
+    # the highest bet made this round.
 
-    case players_in_action(hand, prev_round(hand.round)) --
-           players_who_acted(hand, hand.round) do
-      [] ->
+    all_in_players =
+      hand.actions
+      |> Enum.filter(&(&1.action == :all_in))
+      |> Enum.map(& &1.player)
+
+    folded_players =
+      hand.actions
+      |> Enum.filter(&(&1.action == :fold))
+      |> Enum.map(& &1.player)
+
+    case length(
+           IO.inspect(players_in_action(hand, prev_round(hand.round))) --
+             IO.inspect(players_who_acted(hand, hand.round))
+         ) do
+      x when x <= 1 ->
         number_of_bets =
           hand
           |> player_bets()
@@ -286,12 +299,15 @@ defmodule Poker.Game.GameHand do
   def debug_game_state(hand) do
     Logger.debug("Round #{hand.round}")
 
-    board =
-      hand.board
-      |> Enum.map(&to_string/1)
-      |> Enum.join(" ")
+    _ =
+      if length(hand.board) > 0 do
+        board =
+          hand.board
+          |> Enum.map(&to_string/1)
+          |> Enum.join(" ")
 
-    Logger.debug("Board #{board}")
+        Logger.debug("Board #{board}")
+      end
 
     case hand.round do
       :new ->
@@ -339,6 +355,8 @@ defmodule Poker.Game.GameHand do
 
   def debug_action(action) do
     Logger.debug("   Action #{action.player} #{action.action} #{action.amount}")
+
+    action
   end
 
   def transition(%{round: :new} = hand) do

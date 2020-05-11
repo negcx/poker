@@ -13,7 +13,7 @@ defmodule Poker.GameHandTest do
      ],
      deck: Deck.new(),
      config: %Config{},
-     stacks: %{"Kyle" => 100, "Gely" => 100, "Hugo" => 100}}
+     stacks: %{"Kyle" => 100, "Gely" => 150, "Hugo" => 100}}
   end
 
   test "Deal the cards!", state do
@@ -90,5 +90,35 @@ defmodule Poker.GameHandTest do
       |> GameHand.fold("Gely")
 
     assert Map.keys(hand.winners) |> hd == "Kyle"
+  end
+
+  test "All in, split pot", state do
+    deck =
+      Deck.stack(
+        [
+          [%Poker.Card{rank: :ace, suit: :spades}, %Poker.Card{rank: :ace, suit: :hearts}],
+          [%Poker.Card{rank: :ace, suit: :diamonds}, %Poker.Card{rank: :ace, suit: :clubs}],
+          [
+            %Poker.Card{rank: :eight, suit: :diamonds},
+            %Poker.Card{rank: :seven, suit: :diamonds}
+          ]
+        ],
+        [
+          %Poker.Card{rank: :eight, suit: :clubs},
+          %Poker.Card{rank: :seven, suit: :clubs},
+          %Poker.Card{rank: :king, suit: :hearts},
+          %Poker.Card{rank: :queen, suit: :hearts},
+          %Poker.Card{rank: :jack, suit: :spades}
+        ]
+      )
+
+    hand =
+      GameHand.new(state[:config], deck, state[:players], state[:stacks])
+      |> GameHand.fold("Hugo")
+      |> GameHand.all_in("Kyle")
+      |> GameHand.call("Gely", 98)
+
+    assert hand.round == :end
+    assert Map.keys(hand.winners) -- ["Kyle", "Gely"] == []
   end
 end

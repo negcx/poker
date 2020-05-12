@@ -184,21 +184,11 @@ defmodule Poker.GameHandTest do
       |> GameHand.fold("Lily")
 
     assert hand.round == :end
-    # Kyle and Gely both should split the pot that they have access to
-    # Side Pot #1
-    # - Kyle 100
-    # - Gely 100
-    # - Hugo 100
-    # Kyle and Gely chop 300, 150 each
-    # Side Pot #2
-    # Gely 50
-    # Hugo 50
-    # Gely wins all 100
-    # Side Pot #3
-    # Hugo 50
-    # Hugo wins 50
-    # End result Kyle wins 150, Gely 250, Hugo 50
 
-    %{"Kyle" => %{amount: 150}, "Gely" => %{amount: 450}, "Hugo" => %{amount: 50}} = hand.winners
+    %{
+      "Gely" => %{amount: 475.0, hand: _},
+      "Hugo" => %{amount: 50.0, hand: _},
+      "Kyle" => %{amount: 125.0, hand: _}
+    } = hand.winners
   end
 end

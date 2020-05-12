@@ -1,8 +1,6 @@
 defmodule Poker.GameServerTest do
   use ExUnit.Case, async: true
 
-  alias Poker.Game.{GameServer, Player, Config}
-
   # test "Take a Seat" do
   #   {:ok, gs} = GameServer.start_link(%Config{})
   #   assert GameServer.take_seat(gs, %Player{name: "Kyle", stack: 100}, 3) == :ok

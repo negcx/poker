@@ -282,18 +282,19 @@ defmodule Poker.Game.GameHand do
       |> Kernel.--(folded_players)
 
     if length(turns_remaining) == 0 or length(active_players) in [0, 1] do
-      number_of_bets =
+      # If there are players below the current bet who are not all in
+      # or folded then they need to act before we move to the next turn.
+      players_below_current_bet =
         hand
         |> player_bets()
         |> Enum.filter(fn {_player, action} ->
-          action.action != :fold
+          action.action not in [:fold, :all_in]
         end)
-        |> Enum.group_by(fn {_player, action} -> action.bet end)
-        |> Map.keys()
-        |> length
+        |> Enum.filter(fn {_player, action} ->
+          action.bet < current_bet(hand)
+        end)
 
-      case number_of_bets do
-        1 -> true
+      case length(players_below_current_bet) do
         0 -> true
         _ -> false
       end
@@ -431,48 +432,188 @@ defmodule Poker.Game.GameHand do
     end
   end
 
+  def total_bet(hand, player) do
+    hand.actions
+    |> Enum.filter(&(&1.player == player))
+    |> Enum.reduce(0, fn action, total ->
+      total + action.amount
+    end)
+  end
+
+  def list_subtract([head | tail] = bets) when length(bets) > 1 do
+    [head] ++ list_subtract(tail |> Enum.map(&(&1 - head)))
+  end
+
+  def list_subtract(bets) when length(bets) == 1 do
+    bets
+  end
+
   def transition(%{round: :river} = hand) do
-    case should_transition?(hand) do
-      true ->
-        # Determine winner in a showdown
-        players_with_hands =
-          hand
-          |> players_in_hand()
-          |> Enum.reduce(Map.new(), fn player, map ->
-            map
-            |> Map.put(player, Poker.Hand.value(Map.get(hand.cards, player) ++ hand.board))
-          end)
+    if should_transition?(hand) do
+      # Split Pot Algorithm
+      #
+      # Create a pot out of the lowest bet amount,
+      # group all players there with that bet amount.
+      # Determine the winner of that pot.
+      # Remove that amount from everyone's bets and repeat.
 
-        player_hands =
-          players_with_hands
-          |> Enum.map(fn {_player, hand} -> hand end)
+      # We need to include ALL player bets as they count toward
+      # the pot totals.
+      all_player_bets =
+        hand.actions
+        |> Enum.group_by(& &1.player)
+        |> Enum.reduce([], fn {player, actions}, acc ->
+          total_bets =
+            actions
+            |> Enum.reduce(0, fn action, total ->
+              total + action.amount
+            end)
 
-        winning_hands = Poker.Hand.winner(player_hands)
-
-        count = length(winning_hands)
-        split = pot(hand) / count
-
-        winners =
-          players_with_hands
-          |> Enum.filter(fn {_player, hand} ->
-            hand in winning_hands
-          end)
-          |> Enum.reduce(Map.new(), fn {player, hand}, map ->
-            map
-            |> Map.put(
-              player,
+          acc ++
+            [
               %{
-                hand: hand,
-                amount: split
+                player: player,
+                bet: total_bets,
+                action: List.last(actions).action,
+                hand: Poker.Hand.value(Map.get(hand.cards, player) ++ hand.board)
               }
-            )
+            ]
+        end)
+
+      # All the current bets in order
+      list_of_bets =
+        all_player_bets
+        |> Enum.map(& &1.bet)
+        |> Enum.uniq()
+        |> Enum.sort()
+
+      # Reduce each bet by the previous round bets
+      pot_bets = list_of_bets |> list_subtract()
+
+      # Combine the current bet for each round with the total bet required
+      # to enter that round in a single map, each entry representing a pot.
+      pots =
+        0..(length(list_of_bets) - 1)
+        |> Enum.map(fn i ->
+          %{total_bet: Enum.fetch!(list_of_bets, i), pot_bet: Enum.fetch!(pot_bets, i)}
+        end)
+        # For each pot, gather all the players who participate in that pot
+        # and calculate the total of that pot.
+        |> Enum.reduce(Map.new(), fn pot, map ->
+          player_bets = all_player_bets |> Enum.filter(&(&1.bet >= pot.total_bet))
+
+          map
+          |> Map.put(
+            %{
+              total_bet: pot.total_bet,
+              pot_bet: pot.pot_bet,
+              total_pot: pot.pot_bet * length(player_bets)
+            },
+            player_bets
+          )
+        end)
+        # Determine the winner(s) of each pot.
+        |> Enum.map(fn {pot, players} ->
+          winning_hands =
+            players
+            |> Enum.filter(&(&1.action != :fold))
+            |> Enum.map(& &1.hand)
+            |> Poker.Hand.winner()
+
+          players
+          |> Enum.filter(&(&1.hand in winning_hands))
+          |> Enum.reduce([], fn p, acc ->
+            acc ++
+              [%{player: p.player, hand: p.hand, amount: pot.total_pot / length(winning_hands)}]
           end)
+        end)
+        |> List.flatten()
+        |> Enum.reduce(Map.new(), fn winner, map ->
+          map
+          |> Map.update(
+            winner.player,
+            %{amount: winner.amount, hand: winner.hand},
+            &%{&1 | amount: &1.amount + winner.amount}
+          )
+        end)
+        |> IO.inspect()
 
-        %{hand | round: :end, winners: winners}
-        |> debug_game_state()
+      # list_of_bets =
+      #   list_of_bets
+      #   |> Enum.map(fn bet ->
+      #     {bet,
+      #      bet -
+      #        (list_of_bets
+      #         |> Enum.filter(&(&1 < bet))
+      #         |> Enum.reduce(0, fn b, acc ->
+      #           b + acc
+      #         end))}
+      #   end)
+      #   |> IO.inspect()
 
-      false ->
+      # list_of_bets =
+      #   |> Enum.map(fn bet ->
+      #     all_player_bets
+      #     |> Enum.filter(& &1.bet >= bet)
+      #   end)
+
+      # list_of_bets = hand.actions |> Map.keys() |> Enum.sort() |> IO.inspect()
+      # lowest_bet = list_of_bets |> hd
+
+      # first_pot = bets
+
+      players =
         hand
+        |> players_in_hand()
+        |> Enum.reduce([], fn player, players ->
+          players ++
+            [
+              %{
+                player: player,
+                hand: Poker.Hand.value(Map.get(hand.cards, player) ++ hand.board),
+                bet: total_bet(hand, player)
+              }
+            ]
+        end)
+
+      # Determine winner in a showdown
+      players_with_hands =
+        hand
+        |> players_in_hand()
+        |> Enum.reduce(Map.new(), fn player, map ->
+          map
+          |> Map.put(player, Poker.Hand.value(Map.get(hand.cards, player) ++ hand.board))
+        end)
+
+      player_hands =
+        players_with_hands
+        |> Enum.map(fn {_player, hand} -> hand end)
+
+      winning_hands = Poker.Hand.winner(player_hands)
+
+      count = length(winning_hands)
+      split = pot(hand) / count
+
+      winners =
+        players_with_hands
+        |> Enum.filter(fn {_player, hand} ->
+          hand in winning_hands
+        end)
+        |> Enum.reduce(Map.new(), fn {player, hand}, map ->
+          map
+          |> Map.put(
+            player,
+            %{
+              hand: hand,
+              amount: split
+            }
+          )
+        end)
+
+      %{hand | round: :end, winners: winners}
+      |> debug_game_state()
+    else
+      hand
     end
   end
 

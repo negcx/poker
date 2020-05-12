@@ -29,29 +29,29 @@ defmodule Poker.Game.GameServer do
     end
   end
 
-  @impl true
-  def handle_cast(:start_game, _from, %{state: :waiting_for_players} = state) do
-    case state.players |> Enum.filter(&(&1 != nil)) |> length do
-      x when x >= 2 ->
-        dealer =
-          state.players
-          |> Enum.with_index()
-          |> Enum.filter(fn {player, _index} -> player != nil end)
-          |> Enum.map(fn {_player, index} -> index end)
-          |> Enum.shuffle()
-          |> hd
+  # @impl true
+  # def handle_cast(:start_game, _from, %{state: :waiting_for_players} = state) do
+  #   case state.players |> Enum.filter(&(&1 != nil)) |> length do
+  #     x when x >= 2 ->
+  #       dealer =
+  #         state.players
+  #         |> Enum.with_index()
+  #         |> Enum.filter(fn {player, _index} -> player != nil end)
+  #         |> Enum.map(fn {_player, index} -> index end)
+  #         |> Enum.shuffle()
+  #         |> hd
 
-        state =
-          state
-          |> Map.put(:dealer, dealer)
-          |> Map.put(:state, :preflop)
+  #       state =
+  #         state
+  #         |> Map.put(:dealer, dealer)
+  #         |> Map.put(:state, :preflop)
 
-        {:noreply, state}
+  #       {:noreply, state}
 
-      _ ->
-        {:noreply, state}
-    end
-  end
+  #     _ ->
+  #       {:noreply, state}
+  #   end
+  # end
 
   def take_seat(pid, player, index) do
     GenServer.call(pid, {:take_seat, player, index})

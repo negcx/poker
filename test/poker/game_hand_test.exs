@@ -136,6 +136,69 @@ defmodule Poker.GameHandTest do
   end
 
   test "Three all ins, side pots", state do
-    stacks = %{"Kyle" => 100, "Gely" => 150, "Hugo" => 200}
+    stacks = %{"Kyle" => 50, "Gely" => 150, "Hugo" => 200, "Lily" => 125, "Tito" => 150}
+
+    stacked_deck =
+      Deck.stack(
+        [
+          [%Poker.Card{rank: :ace, suit: :spades}, %Poker.Card{rank: :ace, suit: :hearts}],
+          [%Poker.Card{rank: :ace, suit: :diamonds}, %Poker.Card{rank: :ace, suit: :clubs}],
+          [
+            %Poker.Card{rank: :two, suit: :diamonds},
+            %Poker.Card{rank: :seven, suit: :diamonds}
+          ],
+          [
+            %Poker.Card{rank: :two, suit: :hearts},
+            %Poker.Card{rank: :seven, suit: :hearts}
+          ],
+          [
+            %Poker.Card{rank: :nine, suit: :hearts},
+            %Poker.Card{rank: :four, suit: :hearts}
+          ]
+        ],
+        [
+          %Poker.Card{rank: :eight, suit: :clubs},
+          %Poker.Card{rank: :seven, suit: :clubs},
+          %Poker.Card{rank: :king, suit: :hearts},
+          %Poker.Card{rank: :queen, suit: :hearts},
+          %Poker.Card{rank: :jack, suit: :spades}
+        ]
+      )
+
+    players = [
+      %Player{name: "Kyle", player_id: 1},
+      %Player{name: "Gely", player_id: 2},
+      %Player{name: "Hugo", player_id: 3},
+      %Player{name: "Lily", player_id: 4},
+      %Player{name: "Tito", player_id: 5}
+    ]
+
+    hand =
+      GameHand.new(state[:config], stacked_deck, players, stacks)
+      |> GameHand.raise("Hugo", 100)
+      |> GameHand.call("Lily", 100)
+      |> GameHand.all_in("Tito")
+      |> GameHand.all_in("Kyle")
+      |> GameHand.all_in("Gely")
+      |> GameHand.all_in("Hugo")
+      |> GameHand.fold("Lily")
+
+    assert hand.round == :end
+    # Kyle and Gely both should split the pot that they have access to
+    # Side Pot #1
+    # - Kyle 100
+    # - Gely 100
+    # - Hugo 100
+    # Kyle and Gely chop 300, 150 each
+    # Side Pot #2
+    # Gely 50
+    # Hugo 50
+    # Gely wins all 100
+    # Side Pot #3
+    # Hugo 50
+    # Hugo wins 50
+    # End result Kyle wins 150, Gely 250, Hugo 50
+
+    %{"Kyle" => %{amount: 150}, "Gely" => %{amount: 450}, "Hugo" => %{amount: 50}} = hand.winners
   end
 end

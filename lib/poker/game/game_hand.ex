@@ -52,13 +52,24 @@ defmodule Poker.Game.GameHand do
     hand
   end
 
-  defp action(hand, action) do
-    action |> debug_action
-
+  defp action(hand, %{action: :all_in} = action) do
     %{hand | actions: hand.actions ++ [action]}
     |> update_stack(action.player, -action.amount)
     |> early_transition_to_end()
     |> transition()
+  end
+
+  defp action(hand, action) do
+    action |> debug_action
+
+    if action.amount >= Map.get(hand.stacks, action.player) do
+      all_in(hand, action.player)
+    else
+      %{hand | actions: hand.actions ++ [action]}
+      |> update_stack(action.player, -action.amount)
+      |> early_transition_to_end()
+      |> transition()
+    end
   end
 
   defp update_stack(hand, player, change) do
@@ -68,31 +79,48 @@ defmodule Poker.Game.GameHand do
   @spec small_blind(Poker.Game.GameHand.t()) :: Poker.Game.GameHand.t()
   def small_blind(%__MODULE__{round: :preflop, actions: []} = hand) do
     player = hand.players |> hd
-    amount = min(hand.config.small_blind, Map.get(hand.stacks, player))
 
     hand
-    |> action(%Action{round: :preflop, action: :small_blind, player: player, amount: amount})
+    |> action(%Action{
+      round: :preflop,
+      action: :small_blind,
+      player: player,
+      amount: hand.config.small_blind
+    })
   end
 
   @spec big_blind(Poker.Game.GameHand.t()) :: Poker.Game.GameHand.t()
   def big_blind(%__MODULE__{round: :preflop, actions: actions} = hand)
       when length(actions) == 1 do
     player = hand.players |> Enum.fetch!(1)
-    amount = min(hand.config.big_blind, Map.get(hand.stacks, player))
 
-    hand
-    |> action(%Action{round: :preflop, action: :big_blind, player: player, amount: amount})
-  end
-
-  @spec call(%{actions: [any], round: any}, any, any) :: %{actions: [...], round: any}
-  def call(hand, player, amount) do
     hand
     |> action(%Action{
+      round: :preflop,
+      action: :big_blind,
       player: player,
-      amount: amount,
-      round: hand.round,
-      action: :call
+      amount: hand.config.big_blind
     })
+  end
+
+  def call(hand, player) do
+    player_stack = Map.get(hand.stacks, player)
+
+    amount = min(player_stack, current_bet(hand) - current_player_bet(hand, player))
+
+    case amount do
+      0 ->
+        check(hand, player)
+
+      amount ->
+        hand
+        |> action(%Action{
+          player: player,
+          amount: amount,
+          round: hand.round,
+          action: :call
+        })
+    end
   end
 
   def all_in(hand, player) do
@@ -145,6 +173,15 @@ defmodule Poker.Game.GameHand do
     })
   end
 
+  def current_player_bet(hand, player) do
+    hand.actions
+    |> Enum.filter(&(&1.round == hand.round))
+    |> Enum.filter(&(&1.player == player))
+    |> Enum.reduce(0, fn action, total ->
+      action.amount + total
+    end)
+  end
+
   def current_bet(hand) do
     bets =
       hand.actions
@@ -168,6 +205,42 @@ defmodule Poker.Game.GameHand do
       [{_player, bet} | _bets] ->
         bet
     end
+  end
+
+  defp raise_difference([prev_bet | tail] = bets, minimum) when length(bets) > 1 do
+    [next_bet | small_tail] = tail
+    raise_size = next_bet - prev_bet
+
+    if raise_size >= minimum do
+      [raise_size] ++ raise_difference(tail, raise_size)
+    else
+      # This bet is smaller than the minimum
+      # skip it in the list
+      raise_difference(small_tail, minimum)
+    end
+  end
+
+  defp raise_difference(bets, _minimum) when length(bets) <= 1 do
+    []
+  end
+
+  def minimum_raise(hand) do
+    # The minimum raise is at least the amount of the most
+    # recent raise. This is tricky because we are tracking
+    # the total amount the player is putting in the pot,
+    # not the amount that makes up the "call" portion and
+    # the "raise" portion of a bet.
+
+    # TODO - Deal with all ins
+    bets_and_raises =
+      hand.actions
+      |> Enum.filter(&(&1.round == hand.round))
+      |> Enum.filter(&(&1.action in [:big_blind, :bet, :raise, :all_in]))
+      |> Enum.map(&max(&1.amount, hand.config.big_blind))
+      |> (&([0] ++ &1)).()
+      |> raise_difference(hand.config.big_blind)
+
+    max(hand.config.big_blind, List.last(bets_and_raises))
   end
 
   def player_bets(hand, round) do
@@ -535,17 +608,15 @@ defmodule Poker.Game.GameHand do
   end
 
   def early_transition_to_end(hand) do
-    case length(players_in_hand(hand)) do
-      1 ->
-        winner = hand |> players_in_action |> hd
-        winners = %{winner => %{amount: pot(hand), hand: nil}}
+    if length(players_in_hand(hand)) == 1 do
+      winner = hand |> players_in_action |> hd
+      winners = %{winner => %{amount: pot(hand), hand: nil}}
 
-        %{hand | round: :end, winners: winners}
-        |> update_stack(winner, pot(hand))
-        |> debug_game_state()
-
-      _ ->
-        hand
+      %{hand | round: :end, winners: winners}
+      |> update_stack(winner, pot(hand))
+      |> debug_game_state()
+    else
+      hand
     end
   end
 
@@ -557,6 +628,7 @@ defmodule Poker.Game.GameHand do
     end)
   end
 
+  @spec list_subtract([integer()]) :: [integer()]
   def list_subtract([head | tail] = bets) when length(bets) > 1 do
     [head] ++ list_subtract(tail |> Enum.map(&(&1 - head)))
   end

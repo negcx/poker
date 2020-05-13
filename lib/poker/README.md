@@ -85,3 +85,12 @@ Repeat, moving dealer button
 3. Waiting to join (Seated, with chips)
     1. Waiting for Big Blind
     2. Pay to join next hand
+
+
+# Todo
+* Function to inspect game state to determine whose action it is and what actions are valid
+    * Check for correct player turn
+    * Check for valid bet sizes based on previous bets, blinds, stack size, etc.
+* Prevent invalid actions from being committed to the game state
+* Consider refactoring code that uses maps where lists can be used
+* Implement edge case for [Rule 43](https://www.pokertda.com/view-poker-tda-rules/). If a player all-ins for an amount less than a full bet, the players after only have the option to call (if they have already acted).

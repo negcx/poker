@@ -53,7 +53,7 @@ defmodule Poker.GameHandTest do
       GameHand.new(state[:config], state[:deck], state[:players], state[:stacks])
       |> GameHand.raise("Hugo", 4)
       |> GameHand.fold("Kyle")
-      |> GameHand.call("Gely", 2)
+      |> GameHand.call("Gely")
 
     assert hand.round == :flop
     assert GameHand.current_bet(hand) == 0
@@ -82,7 +82,7 @@ defmodule Poker.GameHandTest do
 
     assert folded_hand.round == :end
 
-    hand = hand |> GameHand.call("Hugo", 8)
+    hand = hand |> GameHand.call("Hugo")
 
     assert hand.round == :river
 
@@ -91,7 +91,7 @@ defmodule Poker.GameHandTest do
     hand =
       hand
       |> GameHand.bet("Gely", 20)
-      |> GameHand.call("Hugo", 20)
+      |> GameHand.call("Hugo")
 
     assert hand.round == :end
 
@@ -118,7 +118,7 @@ defmodule Poker.GameHandTest do
       GameHand.new(state[:config], state[:stacked_deck], state[:players], state[:stacks])
       |> GameHand.fold("Hugo")
       |> GameHand.all_in("Kyle")
-      |> GameHand.call("Gely", 98)
+      |> GameHand.call("Gely")
 
     assert hand.round == :end
     assert Map.keys(hand.winners) -- ["Kyle", "Gely"] == []
@@ -129,7 +129,7 @@ defmodule Poker.GameHandTest do
       GameHand.new(state[:config], state[:stacked_deck], state[:players], state[:stacks])
       |> GameHand.all_in("Hugo")
       |> GameHand.all_in("Kyle")
-      |> GameHand.call("Gely", 98)
+      |> GameHand.call("Gely")
 
     assert hand.round == :end
     assert Map.keys(hand.winners) -- ["Gely", "Kyle"] == []
@@ -176,7 +176,7 @@ defmodule Poker.GameHandTest do
     hand =
       GameHand.new(state[:config], stacked_deck, players, stacks)
       |> GameHand.raise("Hugo", 100)
-      |> GameHand.call("Lily", 100)
+      |> GameHand.call("Lily")
       |> GameHand.all_in("Tito")
       |> GameHand.all_in("Kyle")
       |> GameHand.all_in("Gely")
@@ -190,5 +190,38 @@ defmodule Poker.GameHandTest do
       "Hugo" => %{amount: 50.0, hand: _},
       "Kyle" => %{amount: 125.0, hand: _}
     } = hand.winners
+  end
+
+  test "Bet and raise size introspection", state do
+    hand = GameHand.new(state[:config], state[:deck], state[:players], state[:stacks])
+
+    assert GameHand.current_bet(hand) == 2
+    assert GameHand.minimum_raise(hand) == 2
+
+    hand = hand |> GameHand.raise("Hugo", 8)
+    assert GameHand.minimum_raise(hand) == 6
+  end
+
+  test "Raise introspection - ignore all ins lower than allowed raise", state do
+    hand = GameHand.new(state[:config], state[:deck], state[:players], state[:stacks])
+
+    hand =
+      hand
+      |> GameHand.raise("Hugo", 80)
+      |> GameHand.all_in("Kyle")
+
+    assert GameHand.minimum_raise(hand) == 78
+  end
+
+  test "Call all in automatically", state do
+    hand = GameHand.new(state[:config], state[:deck], state[:players], state[:stacks])
+
+    hand =
+      hand
+      |> GameHand.all_in("Hugo")
+      |> GameHand.call("Kyle")
+
+    assert length(hand.actions |> Enum.filter(&(&1.player == "Kyle" && &1.action == :all_in))) ==
+             1
   end
 end

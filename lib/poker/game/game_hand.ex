@@ -643,4 +643,22 @@ defmodule Poker.Game.GameHand do
       total + action.amount
     end)
   end
+
+  def player_turn(hand) do
+    turns =
+      hand.actions
+      |> Enum.filter(&(&1.round == hand.round))
+      |> Enum.filter(&(&1.player in players_in_action(hand)))
+      |> Enum.map(& &1.player)
+
+    # We can technically have infinite turns so we need a list
+    # at least longer than turns
+    players =
+      hand
+      |> players_in_action()
+      |> Stream.cycle()
+      |> Enum.take(length(turns) + 1)
+
+    (players -- turns) |> hd
+  end
 end

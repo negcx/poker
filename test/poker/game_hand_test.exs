@@ -224,4 +224,18 @@ defmodule Poker.GameHandTest do
     assert length(hand.actions |> Enum.filter(&(&1.player == "Kyle" && &1.action == :all_in))) ==
              1
   end
+
+  test "Whose turn is it?", state do
+    hand = GameHand.new(state[:config], state[:deck], state[:players], state[:stacks])
+
+    assert GameHand.player_turn(hand) == "Hugo"
+    hand = hand |> GameHand.call("Hugo")
+    assert GameHand.player_turn(hand) == "Kyle"
+    hand = hand |> GameHand.fold("Kyle")
+    assert GameHand.player_turn(hand) == "Gely"
+    hand = hand |> GameHand.check("Gely")
+    assert GameHand.player_turn(hand) == "Gely"
+    hand = hand |> GameHand.check("Gely")
+    assert GameHand.player_turn(hand) == "Hugo"
+  end
 end

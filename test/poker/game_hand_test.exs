@@ -228,14 +228,61 @@ defmodule Poker.GameHandTest do
   test "Whose turn is it?", state do
     hand = GameHand.new(state[:config], state[:deck], state[:players], state[:stacks])
 
-    assert GameHand.player_turn(hand) == "Hugo"
+    assert GameHand.player_turn(hand) ==
+             {"Hugo",
+              [
+                %{action: :fold, amount: 0},
+                %{action: :all_in, amount: 100},
+                %{action: :call, amount: 2},
+                %{action: :raise, amount: 4}
+              ]}
+
     hand = hand |> GameHand.call("Hugo")
-    assert GameHand.player_turn(hand) == "Kyle"
+
+    assert GameHand.player_turn(hand) ==
+             {"Kyle",
+              [
+                %{action: :fold, amount: 0},
+                %{action: :all_in, amount: 99},
+                %{action: :call, amount: 1},
+                %{action: :raise, amount: 3}
+              ]}
+
     hand = hand |> GameHand.fold("Kyle")
-    assert GameHand.player_turn(hand) == "Gely"
+
+    assert GameHand.player_turn(hand) ==
+             {"Gely",
+              [
+                %{action: :fold, amount: 0},
+                %{action: :all_in, amount: 148},
+                %{action: :check, amount: 0},
+                %{action: :raise, amount: 2}
+              ]}
+
     hand = hand |> GameHand.check("Gely")
-    assert GameHand.player_turn(hand) == "Gely"
+
+    GameHand.current_bet(hand) |> IO.inspect()
+    GameHand.current_player_bet(hand, "Gely") |> IO.inspect()
+    GameHand.minimum_raise(hand) |> IO.inspect()
+
+    assert GameHand.player_turn(hand) ==
+             {"Gely",
+              [
+                %{action: :fold, amount: 0},
+                %{action: :all_in, amount: 148},
+                %{action: :check, amount: 0},
+                %{action: :bet, amount: 2}
+              ]}
+
     hand = hand |> GameHand.check("Gely")
-    assert GameHand.player_turn(hand) == "Hugo"
+
+    assert GameHand.player_turn(hand) ==
+             {"Hugo",
+              [
+                %{action: :fold, amount: 0},
+                %{action: :all_in, amount: 98},
+                %{action: :check, amount: 0},
+                %{action: :bet, amount: 2}
+              ]}
   end
 end

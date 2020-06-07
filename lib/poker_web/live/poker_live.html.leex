@@ -29,24 +29,15 @@
   <div class="flex flex-col">
     <%= if @name != nil do %>
     <div class="font-bold text-3xl">
-      <%= @name %>
+      <%= @name %> (<%= fnum(@player.stack) %>)
     </div>
     <div class="mt-4 flex flex-row space-x-4">
       <div class="flex flex-row space-x-1">
         <%= for card <- @player.cards do %>
-        <div class="w-24 h-32 <%= suit_to_color(card.suit) %> rounded-lg flex justify-center items-center">
-          <span class="text-4xl text-white"><%= Poker.Rank.to_unicode(card.rank) %></span>
+        <div class="w-12 h-16 <%= suit_to_color(card.suit) %> rounded-lg flex justify-center items-center">
+          <span class="text-xl text-white"><%= Poker.Rank.to_unicode(card.rank) %></span>
         </div>
         <% end %>
-      </div>
-      <div class="flex flex-col">
-        <%# <div class="font-bold text-gray-900 text-lg">Four of a Kind</div>
-        <div class="uppercase text-gray-600 text-xs tracking-wide">
-          <span class="font-bold text-base text-gray-900">A</span> Rank
-          <span class="ml-2 font-bold text-base text-gray-900">K</span> Kicker
-        </div> %>
-        <div class="mt-4 font-bold text-gray-900 text-lg"><%= @player.stack %></div>
-        <div class="text-xs tracking-wide text-gray-600 uppercase">Stack</div>
       </div>
     </div>
 
@@ -81,7 +72,7 @@
 
     <!-- The Board -->
     <%= if @game != nil do %>
-    <div class="mt-6 flex flex-row justify-center items-center space-x-1">
+    <div class="mt-6 flex flex-row space-x-1">
       <%= for card <- @game.board do %>
         <%= board_card(card) %>
       <% end %>
@@ -89,11 +80,11 @@
 
     <div class="mt-4 flex flex-row mx-auto space-x-6">
       <div class="flex flex-col items-center">
-        <div class="text-gray-700 font-bold text-4xl leading-none"><%= @game.pot %></div>
+        <div class="text-gray-700 font-bold text-4xl leading-none"><%= fnum(@game.pot) %></div>
         <div class="uppercase text-gray-500 font-semibold tracking-widest text-xs">Pot</div>
       </div>
       <div class="flex flex-col items-center">
-        <div class="text-gray-700 font-bold text-4xl leading-none"><%= @game.current_bet %></div>
+        <div class="text-gray-700 font-bold text-4xl leading-none"><%= @game.current_bet |> fnum() %></div>
         <div class="uppercase text-gray-500 font-semibold tracking-widest text-xs">Bet</div>
       </div>
     </div>
@@ -106,7 +97,7 @@
     <!-- Action! -->
     <%= if @name != nil and @game != nil and @turn != nil do %>
     <%= if @name == @turn.player do %>
-    <div class="mt-6 flex flex-col">
+    <div class="mt-6 flex flex-col w-48">
       <%= for action <- @turn.actions do %>
         <%= render_action(action) %>
       <% end %>

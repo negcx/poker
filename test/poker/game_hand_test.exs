@@ -1,7 +1,7 @@
 defmodule Poker.GameHandTest do
   use ExUnit.Case, async: true
 
-  alias Poker.Game.{Player, GameHand, Config}
+  alias Poker.Game.{GameHand, Config}
   alias Poker.{Card, Deck}
 
   setup_all do
@@ -261,9 +261,9 @@ defmodule Poker.GameHandTest do
 
     hand = hand |> GameHand.check("Gely")
 
-    GameHand.current_bet(hand) |> IO.inspect()
-    GameHand.current_player_bet(hand, "Gely") |> IO.inspect()
-    GameHand.minimum_raise(hand) |> IO.inspect()
+    GameHand.current_bet(hand)
+    GameHand.current_player_bet(hand, "Gely")
+    GameHand.minimum_raise(hand)
 
     assert GameHand.player_turn(hand) ==
              {"Gely",
@@ -284,5 +284,23 @@ defmodule Poker.GameHandTest do
                 %{action: :check, amount: 0},
                 %{action: :bet, amount: 2}
               ]}
+  end
+
+  test "All in heads up ends early!", state do
+    hand = GameHand.new(state[:config], state[:deck], ["Kyle", "Gely"], state[:stacks])
+
+    hand = hand |> GameHand.call("Kyle")
+    hand = hand |> GameHand.check("Gely")
+    hand = hand |> GameHand.check("Kyle")
+    hand = hand |> GameHand.check("Gely")
+
+    IO.puts("")
+    IO.puts("------------------------------------")
+    IO.puts("ABOUT TO GO ALL IN KYLE!")
+    IO.puts("")
+
+    hand = hand |> GameHand.all_in("Kyle")
+
+    assert hand.round == :turn
   end
 end

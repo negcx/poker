@@ -244,22 +244,46 @@ defmodule Poker.Game.GameHand do
   end
 
   def player_bets(hand, round) do
-    hand.actions
-    |> Enum.filter(&(&1.round == round))
-    |> Enum.group_by(& &1.player, &%{action: &1.action, bet: &1.amount})
-    |> Enum.reduce(Map.new(), fn {player, actions}, map ->
+    hand
+    |> players_in_hand()
+    |> Enum.reduce(%{}, fn player, acc ->
+      player_actions =
+        hand.actions
+        |> Enum.filter(&(&1.round == round))
+        |> Enum.filter(&(&1.player == player))
+
       total_bets =
-        actions
+        player_actions
         |> Enum.reduce(0, fn action, total ->
-          total + action.bet
+          total + action.amount
         end)
 
-      map
-      |> Map.put(player, %{
-        bet: total_bets,
-        action: List.last(actions).action
-      })
+      last_action =
+        if length(player_actions) > 0 do
+          player_actions |> Enum.reverse() |> hd() |> Map.get(:action)
+        else
+          nil
+        end
+
+      acc |> Map.put(player, %{action: last_action, bet: total_bets})
     end)
+
+    # hand.actions
+    # |> Enum.filter(&(&1.round == round))
+    # |> Enum.group_by(& &1.player, &%{action: &1.action, bet: &1.amount})
+    # |> Enum.reduce(Map.new(), fn {player, actions}, map ->
+    #   total_bets =
+    #     actions
+    #     |> Enum.reduce(0, fn action, total ->
+    #       total + action.bet
+    #     end)
+
+    #   map
+    #   |> Map.put(player, %{
+    #     bet: total_bets,
+    #     action: List.last(actions).action
+    #   })
+    # end)
   end
 
   def player_bets(hand) do
@@ -329,12 +353,14 @@ defmodule Poker.Game.GameHand do
       |> Enum.filter(&(&1.action == :all_in))
       |> Enum.map(& &1.player)
       |> Enum.uniq()
+      |> IO.inspect(label: "all_in_players")
 
     folded_players =
       hand.actions
       |> Enum.filter(&(&1.action == :fold))
       |> Enum.map(& &1.player)
       |> Enum.uniq()
+      |> IO.inspect(label: "folded_players")
 
     acted_players =
       hand.actions
@@ -342,17 +368,20 @@ defmodule Poker.Game.GameHand do
       |> Enum.filter(&(&1.round == hand.round))
       |> Enum.map(& &1.player)
       |> Enum.uniq()
+      |> IO.inspect(label: "acted_players")
 
     turns_remaining =
       hand.players
       |> Kernel.--(all_in_players)
       |> Kernel.--(folded_players)
       |> Kernel.--(acted_players)
+      |> IO.inspect(label: "turns_remaining")
 
     active_players =
       hand.players
       |> Kernel.--(all_in_players)
       |> Kernel.--(folded_players)
+      |> IO.inspect(label: "active_players")
 
     if length(turns_remaining) == 0 or length(active_players) in [0, 1] do
       # If there are players below the current bet who are not all in
@@ -360,12 +389,15 @@ defmodule Poker.Game.GameHand do
       players_below_current_bet =
         hand
         |> player_bets()
+        |> IO.inspect(label: "Player Bets")
         |> Enum.filter(fn {_player, action} ->
           action.action not in [:fold, :all_in]
         end)
+        |> IO.inspect(label: "Filtered player bets")
         |> Enum.filter(fn {_player, action} ->
           action.bet < current_bet(hand)
         end)
+        |> IO.inspect(label: "players below current bet")
 
       case length(players_below_current_bet) do
         0 -> true
@@ -614,7 +646,7 @@ defmodule Poker.Game.GameHand do
 
   def early_transition_to_end(hand) do
     if length(players_in_hand(hand)) == 1 do
-      winner = hand |> players_in_action |> hd
+      winner = hand |> players_in_hand |> hd
       winners = %{winner => %{amount: pot(hand), hand: nil}}
 
       %{hand | round: :end, winners: winners}

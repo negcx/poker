@@ -100,7 +100,10 @@ defmodule PokerWeb.PokerLive do
         {:update, state}
       )
 
-      {:noreply, socket |> assign(transform_game_state(state, player))}
+      {:noreply,
+       socket
+       |> assign(transform_game_state(state, player))
+       |> transform_name()}
     else
       {:noreply, socket}
     end
@@ -109,7 +112,9 @@ defmodule PokerWeb.PokerLive do
   @impl true
   def handle_params(%{"u" => name}, _uri, socket) do
     {:noreply,
-     socket |> assign([name: name] ++ transform_game_state(GameServer.get_state(), name))}
+     socket
+     |> assign([name: name] ++ transform_game_state(GameServer.get_state(), name))
+     |> transform_name()}
   end
 
   def handle_params(_params, _uri, socket) do
@@ -118,7 +123,24 @@ defmodule PokerWeb.PokerLive do
 
   @impl true
   def handle_info({:update, state}, socket) do
-    {:noreply, assign(socket, state |> transform_game_state(socket.assigns[:name]))}
+    {:noreply,
+     socket
+     |> assign(transform_game_state(state, socket.assigns[:name]))
+     |> transform_name()}
+  end
+
+  def transform_name(socket) do
+    players =
+      socket.assigns[:players]
+      |> Enum.map(& &1.player)
+
+    if socket.assigns[:name] in players do
+      socket
+    else
+      socket
+      |> assign(name: nil)
+      |> push_patch(to: Routes.poker_path(socket, :index))
+    end
   end
 
   def transform_game_state(%{hand: nil} = state, name) do
@@ -171,7 +193,7 @@ defmodule PokerWeb.PokerLive do
               {a, ^current_round} ->
                 %{
                   action: a,
-                  amount: state.hand |> GameHand.current_player_bet(name)
+                  amount: state.hand |> GameHand.current_player_bet(player)
                 }
 
               {:all_in, _} ->
@@ -269,7 +291,7 @@ defmodule PokerWeb.PokerLive do
         <%= @player %>
       </td>
       <td class="player-td text-right">
-        <%= @stack %>
+        <%= fnum(@stack) %>
       </td>
       <td class="player-td text-center">
       </td>
@@ -294,9 +316,106 @@ defmodule PokerWeb.PokerLive do
         <%= @player %>
       </td>
       <td class="player-td text-right">
-        <%= @stack %>
+        <%= fnum(@stack) %>
       </td>
       <td class="player-td text-center">
+
+      <%= if @player == @turn_player do %>
+        <div class="flex flex-row w-full">
+          <div class="uppercase text-xs font-semibold p-2 bg-orange-200 text-orange-800 rounded flex-1">
+            Waiting...
+          </div>
+        </div>
+
+      <% else %>
+
+      <%= case @action do %>
+
+      <% %{action: :fold} -> %>
+        <div class="flex flex-row w-full">
+          <div class="uppercase text-xs font-semibold p-2 bg-gray-200 text-gray-500 rounded flex-1">
+            Fold
+          </div>
+        </div>
+
+      <% %{action: :call, amount: amount} -> %>
+        <div class="flex flex-row w-full">
+          <div class="uppercase text-xs font-semibold p-2 bg-green-200 text-green-800 rounded-l flex-1">
+            Call
+          </div>
+          <div class="uppercase text-xs font-semibold p-2 text-green-100 bg-green-800 rounded-r">
+            <%= fnum(amount) %>
+          </div>
+        </div>
+
+      <% %{action: :check} -> %>
+        <div class="flex flex-row w-full">
+          <div class="uppercase text-xs font-semibold p-2 bg-green-200 text-green-800 rounded-l flex-1">
+            Check
+          </div>
+        </div>
+
+      <% %{action: :bet, amount: amount} -> %>
+        <div class="flex flex-row w-full">
+          <div class="uppercase text-xs font-semibold p-2 bg-purple-200 text-purple-800 rounded-l flex-1">
+            Bet
+          </div>
+          <div class="uppercase text-xs font-semibold p-2 text-purple-100 bg-purple-800 rounded-r">
+            <%= fnum(amount) %>
+          </div>
+        </div>
+
+      <% %{action: :raise, amount: amount} -> %>
+        <div class="flex flex-row w-full">
+          <div class="uppercase text-xs font-semibold p-2 bg-purple-200 text-purple-800 rounded-l flex-1">
+            Raise
+          </div>
+          <div class="uppercase text-xs font-semibold p-2 text-purple-100 bg-purple-800 rounded-r">
+            <%= fnum(amount) %>
+          </div>
+        </div>
+
+      <% %{action: :big_blind, amount: amount} -> %>
+        <div class="flex flex-row w-full">
+          <div class="uppercase text-xs font-semibold p-2 bg-blue-200 text-blue-800 rounded-l flex-1">
+            Big Blind
+          </div>
+          <div class="uppercase text-xs font-semibold p-2 text-blue-100 bg-blue-800 rounded-r">
+            <%= fnum(amount) %>
+          </div>
+        </div>
+
+      <% %{action: :small_blind, amount: amount} -> %>
+        <div class="flex flex-row w-full">
+          <div class="uppercase text-xs font-semibold p-2 bg-blue-200 text-blue-800 rounded-l flex-1">
+            Small Blind
+          </div>
+          <div class="uppercase text-xs font-semibold p-2 text-blue-100 bg-blue-800 rounded-r">
+            <%= fnum(amount) %>
+          </div>
+        </div>
+
+      <% %{action: :all_in, amount: nil} -> %>
+        <div class="flex flex-row w-full">
+          <div class="uppercase text-xs font-semibold p-2 bg-red-200 text-red-800 rounded-l flex-1">
+            All In
+          </div>
+        </div>
+
+      <% %{action: :all_in, amount: amount} -> %>
+        <div class="flex flex-row w-full">
+          <div class="uppercase text-xs font-semibold p-2 bg-red-200 text-red-800 rounded-l flex-1">
+            All In
+          </div>
+          <div class="uppercase text-xs font-semibold p-2 text-red-100 bg-red-800 rounded-r">
+            <%= fnum(amount) %>
+          </div>
+        </div>
+
+      <% _ -> %>
+
+      <% end %>
+      <% end %>
       </td>
     </tr>
     """
@@ -326,7 +445,7 @@ defmodule PokerWeb.PokerLive do
     ~L"""
     <span class="mt-3 w-full inline-flex rounded-md shadow-sm">
       <button type="button" phx-click="call" class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-base leading-6 font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:border-gray-300 focus:shadow-outline-gray active:bg-gray-300 transition ease-in-out duration-150">
-        Call <%= @amount %>
+        Call <%= fnum(@amount) %>
       </button>
     </span>
     """
@@ -336,7 +455,7 @@ defmodule PokerWeb.PokerLive do
     ~L"""
     <span class="mt-3 w-full inline-flex rounded-md shadow-sm">
       <button type="button" phx-click="all_in" class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-base leading-6 font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:border-gray-300 focus:shadow-outline-gray active:bg-gray-300 transition ease-in-out duration-150">
-        All In <%= @amount %>
+        All In <%= fnum(@amount) %>
       </button>
     </span>
     """
@@ -376,5 +495,13 @@ defmodule PokerWeb.PokerLive do
       </span>
     </form>
     """
+  end
+
+  defp fnum(num) when is_integer(num) do
+    Integer.to_string(num)
+  end
+
+  defp fnum(num) when is_float(num) do
+    :erlang.float_to_binary(num, decimals: 0)
   end
 end

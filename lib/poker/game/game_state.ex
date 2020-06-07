@@ -46,16 +46,29 @@ defmodule Poker.Game.GameState do
     # Move the button
     [new_dealer | tail] = state.players
 
-    IO.inspect(state.stacks)
-    IO.inspect(state.hand.stacks)
-    IO.inspect(Map.merge(state.stacks, state.hand.stacks))
+    state =
+      state
+      |> Map.put(:players, tail ++ [new_dealer])
+      # Update the stacks
+      |> Map.put(:stacks, Map.merge(state.stacks, state.hand.stacks))
+      # Reset the hand
+      |> Map.put(:hand, nil)
+
+    # Remove players who have 0 chips
+    players_without_chips =
+      state.players
+      |> Enum.filter(&(Map.get(state.stacks, &1) <= 0))
 
     state
-    |> Map.put(:players, tail ++ [new_dealer])
-    # Update the stacks
-    |> Map.put(:stacks, Map.merge(state.stacks, state.hand.stacks))
-    # Reset the hand
-    |> Map.put(:hand, nil)
+    |> Map.put(
+      :players,
+      state.players -- players_without_chips
+    )
+    |> Map.put(
+      :stacks,
+      state.stacks
+      |> Map.drop(players_without_chips)
+    )
     |> game_transition()
   end
 

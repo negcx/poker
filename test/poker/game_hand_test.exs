@@ -294,11 +294,6 @@ defmodule Poker.GameHandTest do
     hand = hand |> GameHand.check("Kyle")
     hand = hand |> GameHand.check("Gely")
 
-    IO.puts("")
-    IO.puts("------------------------------------")
-    IO.puts("ABOUT TO GO ALL IN KYLE!")
-    IO.puts("")
-
     hand = hand |> GameHand.all_in("Kyle")
 
     assert hand.round == :turn

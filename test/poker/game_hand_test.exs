@@ -26,9 +26,9 @@ defmodule Poker.GameHandTest do
 
     {:ok,
      players: [
-       %Player{name: "Kyle", player_id: 1},
-       %Player{name: "Gely", player_id: 2},
-       %Player{name: "Hugo", player_id: 3}
+       "Kyle",
+       "Gely",
+       "Hugo"
      ],
      deck: Deck.new(),
      config: %Config{},
@@ -166,11 +166,11 @@ defmodule Poker.GameHandTest do
       )
 
     players = [
-      %Player{name: "Kyle", player_id: 1},
-      %Player{name: "Gely", player_id: 2},
-      %Player{name: "Hugo", player_id: 3},
-      %Player{name: "Lily", player_id: 4},
-      %Player{name: "Tito", player_id: 5}
+      "Kyle",
+      "Gely",
+      "Hugo",
+      "Lily",
+      "Tito"
     ]
 
     hand =

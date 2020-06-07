@@ -25,7 +25,7 @@ defmodule Poker.Game.GameHand do
   def new(config, deck, players, stacks) do
     %__MODULE__{
       deck: deck,
-      players: players |> Enum.map(& &1.name),
+      players: players,
       stacks: stacks,
       config: config
     }
@@ -596,7 +596,12 @@ defmodule Poker.Game.GameHand do
           )
         end)
 
-      %{hand | round: :end, winners: winners}
+      hand = %{hand | round: :end, winners: winners}
+
+      hand.winners
+      |> Enum.reduce(hand, fn {player, winner}, hand ->
+        hand |> update_stack(player, winner.amount)
+      end)
       |> debug_game_state()
     else
       hand
@@ -651,61 +656,65 @@ defmodule Poker.Game.GameHand do
       |> Enum.filter(&(&1.player in players_in_action(hand)))
       |> Enum.map(& &1.player)
 
-    # We can technically have infinite turns so we need a list
-    # at least longer than turns
-    players =
-      hand
-      |> players_in_action()
-      |> Stream.cycle()
-      |> Enum.take(length(turns) + 1)
+    if length(players_in_action(hand)) >= 1 do
+      # We can technically have infinite turns so we need a list
+      # at least longer than turns
+      players =
+        hand
+        |> players_in_action()
+        |> Stream.cycle()
+        |> Enum.take(length(turns) + 1)
 
-    player = (players -- turns) |> hd
+      player = (players -- turns) |> hd
 
-    player_stack = Map.get(hand.stacks, player)
+      player_stack = Map.get(hand.stacks, player)
 
-    # Player can always fold or all in.
-    possible_actions = [
-      %{action: :fold, amount: 0},
-      %{action: :all_in, amount: player_stack}
-    ]
+      # Player can always fold or all in.
+      possible_actions = [
+        %{action: :fold, amount: 0},
+        %{action: :all_in, amount: player_stack}
+      ]
 
-    # Determine if the player can Check/Call
-    possible_actions =
-      possible_actions ++
-        case {current_bet(hand), current_player_bet(hand, player)} do
-          # No bet yet, player can check.
-          {0, _} ->
-            [%{action: :check, amount: 0}]
+      # Determine if the player can Check/Call
+      possible_actions =
+        possible_actions ++
+          case {current_bet(hand), current_player_bet(hand, player)} do
+            # No bet yet, player can check.
+            {0, _} ->
+              [%{action: :check, amount: 0}]
 
-          # Player already has the minimun in the pot, e.g. big blind
-          {bet, player_bet} when bet == player_bet ->
-            [%{action: :check, amount: 0}]
+            # Player already has the minimun in the pot, e.g. big blind
+            {bet, player_bet} when bet == player_bet ->
+              [%{action: :check, amount: 0}]
 
-          # Bet is larger than player stack, they cannot call
-          # they must all in.
-          {bet, player_bet} when bet - player_bet >= player_stack ->
-            []
+            # Bet is larger than player stack, they cannot call
+            # they must all in.
+            {bet, player_bet} when bet - player_bet >= player_stack ->
+              []
 
-          {bet, player_bet} ->
-            [%{action: :call, amount: bet - player_bet}]
-        end
+            {bet, player_bet} ->
+              [%{action: :call, amount: bet - player_bet}]
+          end
 
-    # Determine if the player can Bet/Raise
-    possible_actions =
-      possible_actions ++
-        case {current_bet(hand), current_player_bet(hand, player), minimum_raise(hand)} do
-          # No bet yet, player can bet.
-          {0, 0, min_raise} when player_stack >= min_raise ->
-            [%{action: :bet, amount: min_raise}]
+      # Determine if the player can Bet/Raise
+      possible_actions =
+        possible_actions ++
+          case {current_bet(hand), current_player_bet(hand, player), minimum_raise(hand)} do
+            # No bet yet, player can bet.
+            {0, 0, min_raise} when player_stack >= min_raise ->
+              [%{action: :bet, amount: min_raise}]
 
-          # Player has enough money to make a minimum raise
-          {bet, player_bet, min_raise} when player_stack >= bet - player_bet + min_raise ->
-            [%{action: :raise, amount: bet - player_bet + min_raise}]
+            # Player has enough money to make a minimum raise
+            {bet, player_bet, min_raise} when player_stack >= bet - player_bet + min_raise ->
+              [%{action: :raise, amount: bet - player_bet + min_raise}]
 
-          _ ->
-            []
-        end
+            _ ->
+              []
+          end
 
-    {player, possible_actions}
+      {player, possible_actions}
+    else
+      {nil, []}
+    end
   end
 end

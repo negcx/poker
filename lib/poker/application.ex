@@ -6,6 +6,8 @@ defmodule Poker.Application do
   use Application
 
   def start(_type, _args) do
+    import Supervisor.Spec
+
     children = [
       # Start the Ecto repository
       Poker.Repo,
@@ -14,7 +16,8 @@ defmodule Poker.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: Poker.PubSub},
       # Start the Endpoint (http/https)
-      PokerWeb.Endpoint
+      PokerWeb.Endpoint,
+      worker(Poker.Game.GameServer, [%Poker.Game.Config{}])
       # Start a worker by calling: Poker.Worker.start_link(arg)
       # {Poker.Worker, arg}
     ]

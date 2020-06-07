@@ -1,0 +1,11 @@
+@tailwind base;
+
+@tailwind components;
+
+@tailwind utilities;
+
+.player-td {
+  @apply px-2;
+  @apply py-1;
+  @apply text-sm;
+}

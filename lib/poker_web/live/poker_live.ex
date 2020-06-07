@@ -170,8 +170,31 @@ defmodule PokerWeb.PokerLive do
       game: nil,
       turn: %{player: nil, actions: []},
       player: player,
-      config: state.config
+      config: state.config,
+      winners: previous_winners(state.previous_hand)
     ]
+  end
+
+  def previous_winners(%{round: :end} = hand) do
+    hand.winners
+    |> Enum.map(fn {player, map} ->
+      case map.hand do
+        nil ->
+          "#{player} won #{map.amount}, all other players folded"
+
+        hand ->
+          cards =
+            hand.cards
+            |> Enum.map(&to_string/1)
+            |> Enum.join(" ")
+
+          "#{player} won #{map.amount} with #{hand.type}, #{cards}"
+      end
+    end)
+  end
+
+  def previous_winners(nil) do
+    []
   end
 
   def transform_game_state(state, name) do
@@ -257,28 +280,25 @@ defmodule PokerWeb.PokerLive do
       game: game,
       turn: turn,
       player: player,
-      config: state.config
+      config: state.config,
+      winners: previous_winners(state.previous_hand)
     ]
   end
 
   defp suit_to_color(suit) do
     case suit do
-      :spades -> "bg-gray-700"
-      :hearts -> "bg-red-700"
-      :diamonds -> "bg-blue-700"
-      :clubs -> "bg-green-700"
+      :spades -> "bg-gray-200 text-gray-700 border-gray-700 border-2"
+      :hearts -> "bg-red-200 text-red-700 border-red-700 border-2"
+      :diamonds -> "bg-blue-200 text-blue-700 border-blue-700 border-2"
+      :clubs -> "bg-green-200 text-green-700 border-green-700 border-2"
     end
   end
 
-  defp board_card(card) do
-    assigns = %{
-      color: card.suit |> suit_to_color(),
-      rank: Poker.Rank.to_unicode(card.rank)
-    }
-
+  defp board_card(assigns) do
     ~L"""
-    <div class="w-16 h-20 <%= @color %> rounded-lg flex justify-center items-center">
-      <span class="text-2xl text-white"><%= @rank %></span>
+    <div class="w-16 h-20 <%= @suit |> suit_to_color() %> rounded-lg flex justify-center items-center flex-col">
+      <span class="text-4xl leading-none"><%= @rank |> Poker.Rank.to_unicode() %></span>
+      <span class="text-2xl leading-none"><%= @suit |> Poker.Suit.to_unicode() %></span>
     </div>
     """
   end
@@ -464,14 +484,12 @@ defmodule PokerWeb.PokerLive do
   defp render_action(%{action: :bet} = assigns) do
     ~L"""
     <form phx-submit="bet" class="flex flex-col">
-      <div>
-        <label for="amount" class="mt-3 block text-sm font-medium leading-5 text-gray-700">Bet
-        </label>
+      <div class="mt-4">
         <div class="mt-1 relative rounded-md shadow-sm">
-          <input id="amount" class="form-input block w-full sm:text-sm sm:leading-5" name="amount" value="<%= @amount %>" />
+          <input id="amount" class="text-right form-input block w-full sm:text-sm sm:leading-5" name="amount" value="<%= @amount %>" />
         </div>
       </div>
-      <span class="mt-3 w-full inline-flex rounded-md shadow-sm">
+      <span class="mt-1 w-full inline-flex rounded-md shadow-sm">
         <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-base leading-6 font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:border-gray-300 focus:shadow-outline-gray active:bg-gray-300 transition ease-in-out duration-150">
           Bet
         </button>
@@ -484,8 +502,8 @@ defmodule PokerWeb.PokerLive do
     ~L"""
     <form phx-submit="raise" class="flex flex-col mt-4">
       <div>
-        <div class="mt-1 relative rounded-md shadow-sm">
-          <input id="amount" class="form-input block w-full sm:text-sm sm:leading-5" name="amount" value="<%= @amount %>" />
+        <div class="mt-4 relative rounded-md shadow-sm">
+          <input id="amount" class="form-input text-right block w-full sm:text-sm sm:leading-5" name="amount" value="<%= @amount %>" />
         </div>
       </div>
       <span class="mt-1 w-full inline-flex rounded-md shadow-sm">

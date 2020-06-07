@@ -27,8 +27,8 @@ defmodule Poker.Game.GameServer do
 
   @impl true
   def handle_call({:update_hand, hand}, _from, state) do
-    state = state |> GameState.update_hand(hand)
-    {:reply, state, state}
+    new_state = state |> GameState.update_hand(hand)
+    {:reply, new_state, new_state}
   end
 
   def update_hand(hand) do

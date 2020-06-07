@@ -5,7 +5,8 @@ defmodule Poker.Game.GameState do
     field :config, Poker.Game.Config.t(), enforce: true
     field :players, [String.t()], default: []
     field :stacks, %{String.t() => float()}, default: %{}
-    field :hand, Poker.Game.Gamehand.t(), default: nil
+    field :hand, Poker.Game.GameHand.t(), default: nil
+    field :previous_hand, Poker.Game.GameHand.t(), default: nil
   end
 
   def take_seat(state, name, buy_in) do
@@ -46,6 +47,8 @@ defmodule Poker.Game.GameState do
     # Move the button
     [new_dealer | tail] = state.players
 
+    previous_hand = state.hand
+
     state =
       state
       |> Map.put(:players, tail ++ [new_dealer])
@@ -53,6 +56,7 @@ defmodule Poker.Game.GameState do
       |> Map.put(:stacks, Map.merge(state.stacks, state.hand.stacks))
       # Reset the hand
       |> Map.put(:hand, nil)
+      |> Map.put(:previous_hand, previous_hand)
 
     # Remove players who have 0 chips
     players_without_chips =

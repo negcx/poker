@@ -31,12 +31,11 @@
     <div class="font-bold text-3xl">
       <%= @name %> (<%= fnum(@player.stack) %>)
     </div>
-    <div class="mt-4 flex flex-row space-x-4">
+    <div class="font-bold text-gray-600 mt-4">Player Cards</div>
+    <div class="mt-1 flex flex-row space-x-4">
       <div class="flex flex-row space-x-1">
         <%= for card <- @player.cards do %>
-        <div class="w-12 h-16 <%= suit_to_color(card.suit) %> rounded-lg flex justify-center items-center">
-          <span class="text-xl text-white"><%= Poker.Rank.to_unicode(card.rank) %></span>
-        </div>
+          <%= board_card(card) %>
         <% end %>
       </div>
     </div>
@@ -72,7 +71,8 @@
 
     <!-- The Board -->
     <%= if @game != nil do %>
-    <div class="mt-6 flex flex-row space-x-1">
+    <div class="font-bold text-gray-600 mt-4">Board</div>
+    <div class="mt-1 flex flex-row space-x-1 h-24">
       <%= for card <- @game.board do %>
         <%= board_card(card) %>
       <% end %>
@@ -83,10 +83,6 @@
         <div class="text-gray-700 font-bold text-4xl leading-none"><%= fnum(@game.pot) %></div>
         <div class="uppercase text-gray-500 font-semibold tracking-widest text-xs">Pot</div>
       </div>
-      <div class="flex flex-col items-center">
-        <div class="text-gray-700 font-bold text-4xl leading-none"><%= @game.current_bet |> fnum() %></div>
-        <div class="uppercase text-gray-500 font-semibold tracking-widest text-xs">Bet</div>
-      </div>
     </div>
 
     <% else %>
@@ -94,7 +90,8 @@
     <% end %>
 
     </div>
-    <!-- Action! -->
+  </div>
+  <!-- Action! -->
     <%= if @name != nil and @game != nil and @turn != nil do %>
     <%= if @name == @turn.player do %>
     <div class="mt-6 flex flex-col w-48">
@@ -104,6 +101,12 @@
     </div>
     <% end %>
     <% end %>
-  </div>
-
 </div>
+<%= if length(@winners) > 0 do %>
+<div class="p-5">
+  <span class="font-bold text-gray-600">Previous Hand</span>
+  <%= for winner <- @winners do %>
+  <div><%= winner %></div>
+  <% end %>
+</div>
+<% end %>

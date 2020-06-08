@@ -11,21 +11,47 @@ defmodule PokerWeb.PokerLive do
   end
 
   @impl true
+  def handle_event("bet_change", %{"amount" => amount}, socket) do
+    amount = String.to_integer(amount)
+
+    actions =
+      socket.assigns[:turn].actions
+      |> Enum.map(fn action ->
+        if action.action in [:bet, :raise] do
+          action
+          |> Map.put(:bet, amount)
+        else
+          action
+        end
+      end)
+
+    {:noreply,
+     socket
+     |> assign(
+       turn:
+         socket.assigns[:turn]
+         |> Map.put(:actions, actions)
+     )}
+  end
+
+  @impl true
   def handle_event("take_seat", %{"buy_in" => buy_in, "name" => name}, socket) do
     buy_in = String.to_integer(buy_in)
 
     case GameServer.take_seat(name, buy_in) do
       :ok ->
+        state = GameServer.get_state()
+
         Phoenix.PubSub.broadcast_from!(
           Poker.PubSub,
           self(),
           "game",
-          {:update, GameServer.get_state()}
+          {:update, state}
         )
 
         {:noreply,
          socket
-         |> assign([name: name] ++ transform_game_state(GameServer.get_state(), name))
+         |> assign([name: name] ++ transform_game_state(state, name))
          |> push_patch(to: Routes.poker_path(socket, :index, u: name))}
 
       :error ->
@@ -256,7 +282,7 @@ defmodule PokerWeb.PokerLive do
 
     turn = %{
       player: turn_player,
-      actions: turn_actions
+      actions: turn_actions |> Enum.map(&Map.put(&1, :bet, &1.amount))
     }
 
     game = %{
@@ -483,15 +509,15 @@ defmodule PokerWeb.PokerLive do
 
   defp render_action(%{action: :bet} = assigns) do
     ~L"""
-    <form phx-submit="bet" class="flex flex-col">
+    <form phx-submit="bet" phx-change="bet_change" class="flex flex-col">
       <div class="mt-4">
-        <div class="mt-1 relative rounded-md shadow-sm">
-          <input id="amount" class="text-right form-input block w-full sm:text-sm sm:leading-5" name="amount" value="<%= @amount %>" />
+        <div class="w-full">
+          <input type="range" min="<%= @amount %>" max="<%= @max %>" value="<%= @bet %>" class="slider" name="amount">
         </div>
       </div>
       <span class="mt-1 w-full inline-flex rounded-md shadow-sm">
         <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-base leading-6 font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:border-gray-300 focus:shadow-outline-gray active:bg-gray-300 transition ease-in-out duration-150">
-          Bet
+          Bet <%= @bet %>
         </button>
       </span>
     </form>
@@ -500,15 +526,13 @@ defmodule PokerWeb.PokerLive do
 
   defp render_action(%{action: :raise} = assigns) do
     ~L"""
-    <form phx-submit="raise" class="flex flex-col mt-4">
-      <div>
-        <div class="mt-4 relative rounded-md shadow-sm">
-          <input id="amount" class="form-input text-right block w-full sm:text-sm sm:leading-5" name="amount" value="<%= @amount %>" />
-        </div>
+    <form phx-submit="raise" phx-change="bet_change" class="flex flex-col mt-4">
+      <div class="w-full">
+        <input type="range" min="<%= @amount %>" max="<%= @max %>" value="<%= @bet %>" class="slider" name="amount">
       </div>
       <span class="mt-1 w-full inline-flex rounded-md shadow-sm">
         <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-base leading-6 font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:border-gray-300 focus:shadow-outline-gray active:bg-gray-300 transition ease-in-out duration-150">
-          Raise
+          Raise <%= @bet %>
         </button>
       </span>
     </form>

@@ -709,11 +709,11 @@ defmodule Poker.Game.GameHand do
           case {current_bet(hand), current_player_bet(hand, player), minimum_raise(hand)} do
             # No bet yet, player can bet.
             {0, 0, min_raise} when player_stack >= min_raise ->
-              [%{action: :bet, amount: min_raise}]
+              [%{action: :bet, amount: min_raise, max: player_stack}]
 
             # Player has enough money to make a minimum raise
             {bet, player_bet, min_raise} when player_stack >= bet - player_bet + min_raise ->
-              [%{action: :raise, amount: bet - player_bet + min_raise}]
+              [%{action: :raise, amount: bet - player_bet + min_raise, max: player_stack}]
 
             _ ->
               []

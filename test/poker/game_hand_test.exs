@@ -234,7 +234,7 @@ defmodule Poker.GameHandTest do
                 %{action: :fold, amount: 0},
                 %{action: :all_in, amount: 100},
                 %{action: :call, amount: 2},
-                %{action: :raise, amount: 4}
+                %{action: :raise, amount: 4, max: 100}
               ]}
 
     hand = hand |> GameHand.call("Hugo")
@@ -245,7 +245,7 @@ defmodule Poker.GameHandTest do
                 %{action: :fold, amount: 0},
                 %{action: :all_in, amount: 99},
                 %{action: :call, amount: 1},
-                %{action: :raise, amount: 3}
+                %{action: :raise, amount: 3, max: 99}
               ]}
 
     hand = hand |> GameHand.fold("Kyle")
@@ -256,7 +256,7 @@ defmodule Poker.GameHandTest do
                 %{action: :fold, amount: 0},
                 %{action: :all_in, amount: 148},
                 %{action: :check, amount: 0},
-                %{action: :raise, amount: 2}
+                %{action: :raise, amount: 2, max: 148}
               ]}
 
     hand = hand |> GameHand.check("Gely")
@@ -271,7 +271,7 @@ defmodule Poker.GameHandTest do
                 %{action: :fold, amount: 0},
                 %{action: :all_in, amount: 148},
                 %{action: :check, amount: 0},
-                %{action: :bet, amount: 2}
+                %{action: :bet, amount: 2, max: 148}
               ]}
 
     hand = hand |> GameHand.check("Gely")
@@ -282,7 +282,7 @@ defmodule Poker.GameHandTest do
                 %{action: :fold, amount: 0},
                 %{action: :all_in, amount: 98},
                 %{action: :check, amount: 0},
-                %{action: :bet, amount: 2}
+                %{action: :bet, amount: 2, max: 98}
               ]}
   end
 

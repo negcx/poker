@@ -157,8 +157,10 @@ defmodule PokerWeb.PokerLive do
 
   def transform_name(socket) do
     players =
-      socket.assigns[:players]
-      |> Enum.map(& &1.player)
+      (socket.assigns[:players]
+       |> Enum.map(& &1.player)) ++
+        (socket.assigns[:players_waiting]
+         |> Enum.map(& &1.player))
 
     if socket.assigns[:name] in players do
       socket
@@ -167,6 +169,28 @@ defmodule PokerWeb.PokerLive do
       |> assign(name: nil)
       |> push_patch(to: Routes.poker_path(socket, :index))
     end
+  end
+
+  def previous_winners(%{round: :end} = hand) do
+    hand.winners
+    |> Enum.map(fn {player, map} ->
+      case map.hand do
+        nil ->
+          "#{player} won #{map.amount}, all other players folded"
+
+        hand ->
+          cards =
+            hand.cards
+            |> Enum.map(&to_string/1)
+            |> Enum.join(" ")
+
+          "#{player} won #{map.amount} with #{hand.type}, #{cards}"
+      end
+    end)
+  end
+
+  def previous_winners(nil) do
+    []
   end
 
   def transform_game_state(%{hand: nil} = state, name) do
@@ -193,6 +217,7 @@ defmodule PokerWeb.PokerLive do
 
     [
       players: players,
+      players_waiting: [],
       game: nil,
       turn: %{player: nil, actions: []},
       player: player,
@@ -201,30 +226,19 @@ defmodule PokerWeb.PokerLive do
     ]
   end
 
-  def previous_winners(%{round: :end} = hand) do
-    hand.winners
-    |> Enum.map(fn {player, map} ->
-      case map.hand do
-        nil ->
-          "#{player} won #{map.amount}, all other players folded"
-
-        hand ->
-          cards =
-            hand.cards
-            |> Enum.map(&to_string/1)
-            |> Enum.join(" ")
-
-          "#{player} won #{map.amount} with #{hand.type}, #{cards}"
-      end
-    end)
-  end
-
-  def previous_winners(nil) do
-    []
-  end
-
   def transform_game_state(state, name) do
     current_round = state.hand.round
+
+    players_waiting =
+      (state.players -- state.hand.players)
+      |> Enum.map(fn player ->
+        %{
+          player: player,
+          action: nil,
+          stack: Map.get(state.stacks, player, 0),
+          active: false
+        }
+      end)
 
     players =
       state.hand.players
@@ -294,7 +308,7 @@ defmodule PokerWeb.PokerLive do
     player =
       if name != nil do
         %{
-          stack: Map.get(state.hand.stacks, name, 0),
+          stack: Map.get(state.hand.stacks, name, Map.get(state.stacks, name, 0)),
           cards: Map.get(state.hand.cards, name, [])
         }
       else
@@ -303,6 +317,7 @@ defmodule PokerWeb.PokerLive do
 
     [
       players: players,
+      players_waiting: players_waiting,
       game: game,
       turn: turn,
       player: player,

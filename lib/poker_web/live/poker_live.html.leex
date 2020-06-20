@@ -19,6 +19,9 @@
     <%= for player <- @players do %>
       <%= player_state(player, @turn.player) %>
     <% end %>
+    <%= for player <- @players_waiting do %>
+      <%= player_state(player, @turn.player) %>
+    <% end %>
     </tbody>
   </table>
   <% end %>
